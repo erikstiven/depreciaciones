@@ -1,7 +1,13 @@
 <?php
 
 require ("_Ajax.comun.php"); // No modificar esta linea
-include_once './mayorizacion.inc.php';
+$mayorizacion_path = __DIR__ . '/mayorizacion.inc.php';
+$mayorizacion_available = true;
+if (file_exists($mayorizacion_path)) {
+    include_once $mayorizacion_path;
+} else {
+    $mayorizacion_available = false;
+}
 /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // S E R V I D O R   A J A X //
   :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
@@ -41,10 +47,14 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '') {
     $oReturn = new xajaxResponse ( );
 
     //variables de sesion
-     $idempresa = $_SESSION['U_EMPRESA'];
-	 $sucursal  = $_SESSION['U_SUCURSAL'];
-	 $user_ifx  = $_SESSION['U_USER_INFORMIX'];
-	 $usuario_web = $_SESSION['U_ID'];
+    $idempresa = $_SESSION['U_EMPRESA'] ?? '';
+    $sucursal = $_SESSION['U_SUCURSAL'] ?? '';
+    $user_ifx = $_SESSION['U_USER_INFORMIX'] ?? '';
+    $usuario_web = $_SESSION['U_ID'] ?? '';
+    if ($idempresa === '' || $sucursal === '' || $user_ifx === '' || $usuario_web === '') {
+        $oReturn->alert('Error: sesión inválida o incompleta. Verifica el inicio de sesión y vuelve a intentar.');
+        return $oReturn;
+    }
     //variables del formulario
 	 $empresa = $aForm['empresa'];
 
@@ -185,7 +195,11 @@ function generar($aForm = ''){
     $oIfxA->DSN = $DSN_Ifx;
     $oIfxA->Conectar();
 
-    $oReturn = new xajaxResponse ( );
+	$oReturn = new xajaxResponse ( );
+    if (!class_exists('mayorizacion_class')) {
+        $oReturn->alert('Error: no se pudo cargar mayorizacion.inc.php. Verifica que el archivo exista y sea accesible.');
+        return $oReturn;
+    }
 
     //variables de sesion
     $array       	= $_SESSION['ARRAY_PINTA'];

@@ -648,6 +648,11 @@ function generar($aForm = '')
 
 	//$oReturn->alert($filtro);
 	try {
+		$periodo_inicio = intval($anio) * 100 + intval($mes);
+		$periodo_fin = intval($anio_fin) * 100 + intval($mes_fin);
+		if ($periodo_inicio > $periodo_fin) {
+			throw new Exception("El rango seleccionado es inválido. Año/Mes Desde debe ser menor o igual a Año/Mes Hasta.");
+		}
 		$oIfx->QueryT('BEGIN');
 
 		$ctrl_reg = 0;
@@ -675,8 +680,17 @@ function generar($aForm = '')
 		// CAVECERA TABLA
 
 		if ($detallado == 'S') {
+			$periodo_inicio = DateTime::createFromFormat('Y-n-j', $anio . '-' . intval($mes) . '-1');
+			$periodo_fin = DateTime::createFromFormat('Y-n-j', $anio_fin . '-' . intval($mes_fin) . '-1');
+			if (!$periodo_inicio || !$periodo_fin) {
+				throw new Exception("El rango seleccionado es inválido. Año/Mes Desde debe ser menor o igual a Año/Mes Hasta.");
+			}
+			$periodo_fin->modify('last day of this month');
 
-			for ($m = $mes; $m <= $mes_fin; $m++) {
+			$periodo_actual = clone $periodo_inicio;
+			while ($periodo_actual <= $periodo_fin) {
+				$anio_iter = intval($periodo_actual->format('Y'));
+				$mes_iter = intval($periodo_actual->format('m'));
 
 
 				// ULTIMA FILA TOTALES	
@@ -706,8 +720,8 @@ function generar($aForm = '')
 					 where c.cdep_cod_acti = saecdep.cdep_cod_acti
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
-					 and c.cdep_ani_depr = $anio
-					 and c.cdep_mes_depr = $m) as cdep_dep_acum,
+					 and c.cdep_ani_depr = $anio_iter
+					 and c.cdep_mes_depr = $mes_iter) as cdep_dep_acum,
 					 sum(saecdep.cdep_gas_depn) as cdep_gas_depn, 					 
 					 max(saecdep.cdep_mes_depr) as cdep_mes_depr,
 					 DATE_PART('year', act_fiman_act ) anio,
@@ -724,17 +738,19 @@ function generar($aForm = '')
 					 ( saeact.act_cod_act = saecdep.cdep_cod_acti ) and  
 					 ( saeact.act_cod_empr = saecdep.act_cod_empr ) and  
 					 ( ( saecdep.act_cod_empr = $empresa ) and
-					 ( saecdep.cdep_ani_depr between $anio and $anio_fin ) and  
-					 ( saecdep.cdep_mes_depr =$m  ) ) and
-					 ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $m)  )  and
-					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $m))
+					 ( saecdep.cdep_ani_depr = $anio_iter ) and  
+					 ( saecdep.cdep_mes_depr = $mes_iter  ) ) and
+					 ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_iter)  )  and
+					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $mes_iter))
 						$filtro
 						GROUP BY 1,2,3,4,5,6,7,8,10,11,12,13,14,17,18,19
 						ORDER BY saegact.gact_des_gact, saesgac.sgac_des_sgac, saeact.act_nom_act, cdep_ani_depr, cdep_mes_depr ";
 				//echo $sql; exit;
 				//$oReturn->alert($sql);
-				if ($oIfx->Query($sql)) {
-					if ($oIfx->NumFilas() > 0) {
+				if (!$oIfx->Query($sql)) {
+					throw new Exception("Error al ejecutar consulta de depreciación.");
+				}
+				if ($oIfx->NumFilas() > 0) {
 						$i = 1;
 						$ctrl_reg++;
 
@@ -917,7 +933,8 @@ function generar($aForm = '')
 					}
 				}
 				$oIfx->Free();
-			} //CIERRE FOR MES
+				$periodo_actual->modify('+1 month');
+			} //CIERRE WHILE MES
 
 		} //CIERRE IF DETALLADO
 
@@ -961,8 +978,7 @@ function generar($aForm = '')
 					 ( saeact.act_cod_act = saecdep.cdep_cod_acti ) and  
 					 ( saeact.act_cod_empr = saecdep.act_cod_empr ) and  
 					 ( ( saecdep.act_cod_empr = $empresa ) and
-					 ( saecdep.cdep_ani_depr between $anio and $anio_fin ) and  
-					 ( saecdep.cdep_mes_depr between $mes and $mes_fin ) ) and
+					 ( (saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr between ($anio * 100 + $mes) and ($anio_fin * 100 + $mes_fin) ) ) and
 					 ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_fin)  )  and
 					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $mes_fin))
 						$filtro
@@ -970,8 +986,10 @@ function generar($aForm = '')
 						ORDER BY saegact.gact_des_gact, saesgac.sgac_des_sgac, saeact.act_nom_act, cdep_ani_depr, cdep_mes_depr ";
 			//echo $sql; exit;
 			//$oReturn->alert($sql);
-			if ($oIfx->Query($sql)) {
-				if ($oIfx->NumFilas() > 0) {
+			if (!$oIfx->Query($sql)) {
+				throw new Exception("Error al ejecutar consulta de depreciación.");
+			}
+			if ($oIfx->NumFilas() > 0) {
 					$i = 1;
 					$ctrl_reg++;
 
@@ -1165,16 +1183,16 @@ function generar($aForm = '')
 		if ($ctrl_reg != 0) {
 			$_SESSION['ACT_REP_DEPR'] = $html;
 		} else {
-			$html = '<div style="font-size:14px;" ><b>..Sin Datos..<b/></div>';
+			$html = '<div style="font-size:14px;" ><b>No existen depreciaciones registradas en el rango seleccionado.</b></div>';
+			$oReturn->alert('No existen depreciaciones registradas en el rango seleccionado.');
 		}
 
 
 		$oReturn->assign("reporte", "innerHTML", $html);
-		$oReturn->alert('Proceso Terminado con Exito');
 		$oIfx->QueryT('COMMIT WORK;');
 	} catch (Exception $e) {
 		$oCon->QueryT('ROLLBACK');
-		$oReturn->alert($e->getMessage());
+		$oReturn->alert("Error en el proceso de depreciación:\n" . $e->getMessage());
 	}
 	return $oReturn;
 }
