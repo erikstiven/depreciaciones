@@ -972,8 +972,7 @@ function generar($aForm = '')
 					 ( saeact.act_cod_act = saecdep.cdep_cod_acti ) and  
 					 ( saeact.act_cod_empr = saecdep.act_cod_empr ) and  
 					 ( ( saecdep.act_cod_empr = $empresa ) and
-					 ( saecdep.cdep_ani_depr between $anio and $anio_fin ) and  
-					 ( saecdep.cdep_mes_depr between $mes and $mes_fin ) ) and
+					 ( (saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr between ($anio * 100 + $mes) and ($anio_fin * 100 + $mes_fin) ) ) and
 					 ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_fin)  )  and
 					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $mes_fin))
 						$filtro
