@@ -448,12 +448,6 @@ function generar($aForm = '')
         $sucursal = $idsucursal;
     }
 
-    /**
-     * Flujo actual del procesamiento de depreciación:
-     * - Parámetros: empresa, sucursal, grupo/subgrupo, activo desde/hasta y rango (anio/mes desde - anio/mes hasta).
-     * - Registros generados: inserta en saecdep (detalle mensual de depreciación).
-     * - Validaciones: evita reprocesar un mes ya depreciado (salta si existe cdep_fec_depr).
-     */
     //variables formulario
     $grupo           = $aForm['cod_grupo'];
     $subgrupo      = $aForm['cod_subgrupo'];
@@ -540,6 +534,10 @@ function generar($aForm = '')
         //echo $sql; exit;	
         if ($oIfxA->Query($sql)) {
             if ($oIfxA->NumFilas() > 0) {
+                $audit_log = [];
+                $total_evaluados = 0;
+                $total_procesados = 0;
+                $total_omitidos = 0;
                 do {
                     // LEER DATOS AVTIVO
                     $codigo_activo        =    $oIfxA->f('act_cod_act');
@@ -589,77 +587,159 @@ function generar($aForm = '')
                     while ($periodo_actual <= $fecha_fin_rango) {
                         $anio_iter = intval($periodo_actual->format('Y'));
                         $mes_iter = intval($periodo_actual->format('m'));
-
                         $mes_inicio = new DateTime($periodo_actual->format('Y-m-01'));
-                        if ($mes_inicio < new DateTime($inicio_activo_dt->format('Y-m-01'))) {
-                            $periodo_actual->modify('+1 month');
-                            continue;
-                        }
-                        if ($fin_vida_util_dt && $mes_inicio > new DateTime($fin_vida_util_dt->format('Y-m-01'))) {
-                            $periodo_actual->modify('+1 month');
-                            continue;
-                        }
+                        $estado = '';
+                        $motivo = '';
 
-                        $sql_existe = "select count(cdep_gas_depn) as existe
+                        $fin_activo_mes = $fin_activo_dt ? new DateTime($fin_activo_dt->format('Y-m-01')) : null;
+                        $fin_vida_mes = new DateTime($fin_vida_util_dt->format('Y-m-01'));
+                        $inicio_activo_mes = new DateTime($inicio_activo_dt->format('Y-m-01'));
+
+                        if ($fin_activo_mes && $mes_inicio > $fin_activo_mes) {
+                            $estado = 'OMITIDO';
+                            $motivo = 'ACTIVO DE BAJA';
+                        } elseif ($mes_inicio < $inicio_activo_mes || $mes_inicio > $fin_vida_mes) {
+                            $estado = 'OMITIDO';
+                            $motivo = 'FUERA DE VIDA UTIL';
+                        } else {
+                            $sql_existe = "select count(cdep_gas_depn) as existe
 										from saecdep
 										where cdep_cod_acti = $codigo_activo 
 										and cdep_ani_depr = $anio_iter
 										and cdep_mes_depr = $mes_iter";
-                        $existe = consulta_string($sql_existe, 'existe', $oIfx, 0);
-                        if ($existe > 0) {
-                            $periodo_actual->modify('+1 month');
-                            continue;
-                        }
+                            $existe = consulta_string($sql_existe, 'existe', $oIfx, 0);
+                            if ($existe > 0) {
+                                $estado = 'OMITIDO';
+                                $motivo = 'YA EXISTE';
+                            } else {
+                                $mes_anterior_dt = (clone $periodo_actual)->modify('-1 month');
+                                $anio_prev = intval($mes_anterior_dt->format('Y'));
+                                $mes_prev = intval($mes_anterior_dt->format('m'));
+                                $fecha_hasta = $periodo_actual->format('Y-m-t');
 
-                        $mes_anterior_dt = (clone $periodo_actual)->modify('-1 month');
-                        $anio_prev = intval($mes_anterior_dt->format('Y'));
-                        $mes_prev = intval($mes_anterior_dt->format('m'));
-                        $fecha_hasta = $periodo_actual->format('Y-m-t');
-
-                        $sql = "select metd_cod_acti, metd_val_metd 
+                                $sql = "select metd_cod_acti, metd_val_metd 
 					from saemet 
 					where metd_has_fech = '$fecha_hasta'
 					and metd_cod_empr   =  $empresa					
 					";
-                        $arrayValorDepre = [];
-                        if ($oIfx->Query($sql)) {
-                            if ($oIfx->NumFilas() > 0) {
-                                do {
-                                    $arrayValorDepre[$oIfx->f('metd_cod_acti')] = $oIfx->f('metd_val_metd');
-                                } while ($oIfx->SiguienteRegistro());
-                            }
-                        }
-                        $oIfx->Free();
+                                $arrayValorDepre = [];
+                                if ($oIfx->Query($sql)) {
+                                    if ($oIfx->NumFilas() > 0) {
+                                        do {
+                                            $arrayValorDepre[$oIfx->f('metd_cod_acti')] = $oIfx->f('metd_val_metd');
+                                        } while ($oIfx->SiguienteRegistro());
+                                    }
+                                }
+                                $oIfx->Free();
 
-                        $valor_mesual = $arrayValorDepre[$codigo_activo] ?? 0;
+                                $valor_mesual = $arrayValorDepre[$codigo_activo] ?? 0;
 
-                        $sql_dep_acumulada = "SELECT (coalesce(cdep_dep_acum, 0) +  coalesce(cdep_gas_depn, 0)) as depr_acumulada
+                                $sql_dep_acumulada = "SELECT (coalesce(cdep_dep_acum, 0) +  coalesce(cdep_gas_depn, 0)) as depr_acumulada
 										from saecdep
 										where cdep_cod_acti = $codigo_activo 
 										and cdep_ani_depr = $anio_prev
 										and cdep_mes_depr = $mes_prev";
-                        $valor_acumulado = consulta_string($sql_dep_acumulada, 'depr_acumulada', $oIfx, 0);
+                                $valor_acumulado = consulta_string($sql_dep_acumulada, 'depr_acumulada', $oIfx, 0);
 
-                        if ($valor_acumulado == 0) {
-                            $valor_anterior = 0;
-                            $valor_acumulado = $valor_mesual;
-                        } else {
-                            $valor_anterior = $valor_acumulado - $valor_mesual;
-                        }
+                                if ($valor_acumulado == 0) {
+                                    $valor_anterior = 0;
+                                    $valor_acumulado = $valor_mesual;
+                                } else {
+                                    $valor_anterior = $valor_acumulado - $valor_mesual;
+                                }
 
-                        $sql_cdep = "INSERT into saecdep (cdep_cod_acti, cdep_cod_tdep,     cdep_mes_depr, cdep_ani_depr, 
+                                $sql_cdep = "INSERT into saecdep (cdep_cod_acti, cdep_cod_tdep,     cdep_mes_depr, cdep_ani_depr, 
                                                      cdep_fec_depr, act_cod_empr,       act_cod_sucu,  cdep_dep_acum, 
                                                      cdep_gas_depn, cdep_est_cdep,      cdep_fec_cdep, cdep_val_rep1 )
 					                        values ($codigo_activo, '$tipo_depreciacion', $mes_iter,           $anio_iter, 
                                                     '$fecha_hasta',  $empresa,            $sucursal,      $valor_acumulado , 
                                                     $valor_mesual,      'PE',           '$fechaServer',    $valor_anterior)";
-                        $oIfx->QueryT($sql_cdep);
+                                $oIfx->QueryT($sql_cdep);
+                                $estado = 'PROCESADO';
+                                $motivo = 'DEPRECIADO';
+                            }
+                        }
+
+                        $audit_log[] = [
+                            'activo' => $clave_activo,
+                            'nombre' => $nombre_activo,
+                            'anio' => $anio_iter,
+                            'mes' => $mes_iter,
+                            'estado' => $estado,
+                            'motivo' => $motivo,
+                        ];
+                        $total_evaluados++;
+                        if ($estado === 'PROCESADO') {
+                            $total_procesados++;
+                        } else {
+                            $total_omitidos++;
+                        }
+
                         $periodo_actual->modify('+1 month');
                     }
                 } while ($oIfxA->SiguienteRegistro());
+                $tabla_detalle = '';
+                foreach ($audit_log as $fila) {
+                    $clase_estado = $fila['estado'] === 'PROCESADO' ? 'label label-success' : 'label label-warning';
+                    $tabla_detalle .= '<tr>'
+                        . '<td>' . htmlspecialchars($fila['activo'], ENT_QUOTES, 'UTF-8') . '</td>'
+                        . '<td>' . htmlspecialchars($fila['nombre'], ENT_QUOTES, 'UTF-8') . '</td>'
+                        . '<td>' . $fila['anio'] . '</td>'
+                        . '<td>' . str_pad($fila['mes'], 2, '0', STR_PAD_LEFT) . '</td>'
+                        . '<td><span class="' . $clase_estado . '">' . $fila['estado'] . '</span></td>'
+                        . '<td>' . htmlspecialchars($fila['motivo'], ENT_QUOTES, 'UTF-8') . '</td>'
+                        . '</tr>';
+                }
+
+                $resumen_html = '<div class="row">'
+                    . '<div class="col-md-12">'
+                    . '<p><strong>Meses evaluados:</strong> ' . $total_evaluados . '</p>'
+                    . '<p><strong>Procesados:</strong> ' . $total_procesados . '</p>'
+                    . '<p><strong>Omitidos:</strong> ' . $total_omitidos . '</p>'
+                    . '</div>'
+                    . '</div>'
+                    . '<div class="table-responsive" style="max-height: 300px; overflow: auto;">'
+                    . '<table class="table table-bordered table-condensed">'
+                    . '<thead><tr>'
+                    . '<th>Activo</th>'
+                    . '<th>Nombre</th>'
+                    . '<th>Año</th>'
+                    . '<th>Mes</th>'
+                    . '<th>Estado</th>'
+                    . '<th>Motivo</th>'
+                    . '</tr></thead>'
+                    . '<tbody>' . $tabla_detalle . '</tbody>'
+                    . '</table>'
+                    . '</div>';
+
+                $oReturn->assign('divResumenDepreciacion', 'innerHTML', $resumen_html);
+                $oReturn->script('mostrarResumenDepreciacion();');
+            } else {
+                $resumen_html = '<div class="row">'
+                    . '<div class="col-md-12">'
+                    . '<p><strong>Meses evaluados:</strong> 0</p>'
+                    . '<p><strong>Procesados:</strong> 0</p>'
+                    . '<p><strong>Omitidos:</strong> 0</p>'
+                    . '</div>'
+                    . '</div>'
+                    . '<div class="table-responsive" style="max-height: 300px; overflow: auto;">'
+                    . '<table class="table table-bordered table-condensed">'
+                    . '<thead><tr>'
+                    . '<th>Activo</th>'
+                    . '<th>Nombre</th>'
+                    . '<th>Año</th>'
+                    . '<th>Mes</th>'
+                    . '<th>Estado</th>'
+                    . '<th>Motivo</th>'
+                    . '</tr></thead>'
+                    . '<tbody></tbody>'
+                    . '</table>'
+                    . '</div>';
+
+                $oReturn->assign('divResumenDepreciacion', 'innerHTML', $resumen_html);
+                $oReturn->script('mostrarResumenDepreciacion();');
             }
         }
-        $oReturn->alert('Proceso Terminado con Exito');
     } catch (Exception $e) {
         $oReturn->alert($e->getMessage());
     }
