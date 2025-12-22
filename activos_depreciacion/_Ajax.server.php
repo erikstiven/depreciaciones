@@ -156,7 +156,8 @@ function f_filtro_activos_desde($aForm)
     // DATOS DEL ACTIVO
     $sql = "select act_cod_act, act_nom_act, act_clave_act
 			from saeact
-			where act_cod_empr = '$empresa'	
+			where act_cod_empr = '$empresa'
+			and act_cod_sucu = '$sucursal'
 			and sgac_cod_sgac  = '$subgrupo'
 			order by act_cod_act";
     //echo $sql; exit;
@@ -206,7 +207,8 @@ function f_filtro_activos_hasta($aForm)
     // DATOS DEL ACTIVO
     $sql = "select act_cod_act, act_nom_act, act_clave_act
 			from saeact
-			where act_cod_empr = '$empresa'		
+			where act_cod_empr = '$empresa'
+			and act_cod_sucu = '$sucursal'
 			and sgac_cod_sgac  = '$subgrupo'
 			order by act_cod_act";
     //echo $sql; exit;
