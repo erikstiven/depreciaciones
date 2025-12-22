@@ -40,6 +40,9 @@
             xajax_genera_cabecera_formulario('filtro', xajax.getFormValues("form1"));
         }		
         function generar(){
+            if (document.getElementById("btnProcesar").getAttribute("data-disabled") === "true") {
+                return;
+            }
             if(ProcesarFormulario() == true){
                 xajax_generar(xajax.getFormValues("form1"));
             }
@@ -64,43 +67,155 @@
             document.form1.sucursal.value = i;
         }
 
-        function f_filtro_anio(data){
-            xajax_f_filtro_anio(xajax.getFormValues("form1"), data);           
+        function f_filtro_anio_desde(data){
+            xajax_f_filtro_anio_desde(xajax.getFormValues("form1"), data);           
         }
    
-        function eliminar_lista_anio() {
-            var sel = document.getElementById("anio");
+        function eliminar_lista_anio_desde() {
+            var sel = document.getElementById("anio_desde");
             for (var i = (sel.length - 1); i >= 1; i--) {
                 aBorrar = sel.options[i];
                 aBorrar.parentNode.removeChild(aBorrar);
             }
         }
         
-        function anadir_elemento_anio(x, i, elemento) {
-            var lista = document.form1.anio;
+        function anadir_elemento_anio_desde(x, i, elemento) {
+            var lista = document.form1.anio_desde;
             var option = new Option(elemento, i);
             lista.options[x] = option;
-            document.form1.anio.value = i;
+            document.form1.anio_desde.value = i;
         }
 
-		
-        function f_filtro_mes(data){
-            xajax_f_filtro_mes(xajax.getFormValues("form1"), data);           
+        function f_filtro_anio_hasta(data){
+            xajax_f_filtro_anio_hasta(xajax.getFormValues("form1"), data);           
         }
    
-        function eliminar_lista_mes() {
-            var sel = document.getElementById("mes");
+        function eliminar_lista_anio_hasta() {
+            var sel = document.getElementById("anio_hasta");
             for (var i = (sel.length - 1); i >= 1; i--) {
                 aBorrar = sel.options[i];
                 aBorrar.parentNode.removeChild(aBorrar);
             }
         }
         
-        function anadir_elemento_mes(x, i, elemento) {
-            var lista = document.form1.mes;
+        function anadir_elemento_anio_hasta(x, i, elemento) {
+            var lista = document.form1.anio_hasta;
             var option = new Option(elemento, i);
             lista.options[x] = option;
-            document.form1.mes.value = i;
+            document.form1.anio_hasta.value = i;
+        }
+
+        function f_filtro_mes_desde(data){
+            xajax_f_filtro_mes_desde(xajax.getFormValues("form1"), data);           
+        }
+   
+        function eliminar_lista_mes_desde() {
+            var sel = document.getElementById("mes_desde");
+            for (var i = (sel.length - 1); i >= 1; i--) {
+                aBorrar = sel.options[i];
+                aBorrar.parentNode.removeChild(aBorrar);
+            }
+        }
+        
+        function anadir_elemento_mes_desde(x, i, elemento) {
+            var lista = document.form1.mes_desde;
+            var option = new Option(elemento, i);
+            lista.options[x] = option;
+            document.form1.mes_desde.value = i;
+        }
+
+        function f_filtro_mes_hasta(data){
+            xajax_f_filtro_mes_hasta(xajax.getFormValues("form1"), data);           
+        }
+   
+        function eliminar_lista_mes_hasta() {
+            var sel = document.getElementById("mes_hasta");
+            for (var i = (sel.length - 1); i >= 1; i--) {
+                aBorrar = sel.options[i];
+                aBorrar.parentNode.removeChild(aBorrar);
+            }
+        }
+        
+        function anadir_elemento_mes_hasta(x, i, elemento) {
+            var lista = document.form1.mes_hasta;
+            var option = new Option(elemento, i);
+            lista.options[x] = option;
+            document.form1.mes_hasta.value = i;
+        }
+
+        function validar_rango_periodo() {
+            var anioDesde = document.getElementById("anio_desde").value;
+            var mesDesde = document.getElementById("mes_desde").value;
+            var anioHasta = document.getElementById("anio_hasta").value;
+            var mesHasta = document.getElementById("mes_hasta").value;
+            var mensaje = document.getElementById("mensaje_rango");
+            var boton = document.getElementById("btnProcesar");
+
+            var periodoDesde = parseInt(anioDesde, 10) * 100 + parseInt(mesDesde, 10);
+            var periodoHasta = parseInt(anioHasta, 10) * 100 + parseInt(mesHasta, 10);
+
+            if (!anioDesde || !mesDesde || !anioHasta || !mesHasta) {
+                mensaje.textContent = '';
+                boton.classList.add("disabled");
+                boton.setAttribute("data-disabled", "true");
+                return false;
+            }
+
+            if (periodoDesde > periodoHasta) {
+                mensaje.textContent = 'El rango es inválido: Año/Mes Desde debe ser menor o igual a Año/Mes Hasta.';
+                boton.classList.add("disabled");
+                boton.setAttribute("data-disabled", "true");
+                return false;
+            }
+
+            mensaje.textContent = '';
+            boton.classList.remove("disabled");
+            boton.setAttribute("data-disabled", "false");
+            return true;
+        }
+
+        function mostrarResumenDepreciacion() {
+            var modal = document.getElementById("modalResumenDepre");
+            if (!modal) {
+                return;
+            }
+            modal.style.display = "block";
+            modal.classList.add("in");
+            modal.setAttribute("aria-hidden", "false");
+            var backdrop = document.createElement("div");
+            backdrop.className = "modal-backdrop fade in";
+            backdrop.id = "modalResumenDepreBackdrop";
+            document.body.appendChild(backdrop);
+        }
+
+        function cerrarResumenDepreciacion() {
+            var modal = document.getElementById("modalResumenDepre");
+            if (modal) {
+                modal.style.display = "none";
+                modal.classList.remove("in");
+                modal.setAttribute("aria-hidden", "true");
+            }
+            var backdrop = document.getElementById("modalResumenDepreBackdrop");
+            if (backdrop && backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        }
+
+        function irReporteDepreciacion() {
+            var empresa = document.getElementById("empresa").value;
+            var sucursal = document.getElementById("sucursal").value;
+            var anioDesde = document.getElementById("anio_desde").value;
+            var mesDesde = document.getElementById("mes_desde").value;
+            var anioHasta = document.getElementById("anio_hasta").value;
+            var mesHasta = document.getElementById("mes_hasta").value;
+            var url = "../activos_rep_depreciacion/activos_rep_depre.php"
+                + "?empresa=" + encodeURIComponent(empresa)
+                + "&sucursal=" + encodeURIComponent(sucursal)
+                + "&anio_desde=" + encodeURIComponent(anioDesde)
+                + "&mes_desde=" + encodeURIComponent(mesDesde)
+                + "&anio_hasta=" + encodeURIComponent(anioHasta)
+                + "&mes_hasta=" + encodeURIComponent(mesHasta);
+            window.open(url, "_blank");
         }
 		function f_filtro_grupo(data){
             xajax_f_filtro_grupo(xajax.getFormValues("form1"), data);           
@@ -275,25 +390,45 @@
                             </div>
                             <div class="col-md-3">
                                 <label for="sucursal">* Sucursal </label>
-                                <select id="sucursal" name="sucursal" class="form-control input-sm select2" onchange="f_filtro_anio(); f_filtro_grupo();"  required>
+                                <select id="sucursal" name="sucursal" class="form-control input-sm select2" onchange="f_filtro_anio_desde(); f_filtro_anio_hasta(); f_filtro_grupo(); validar_rango_periodo();" required>
                                     <option value="0">Seleccione una opcion..</option>  
                                     <?=$lista_sucu;?>                                  
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label for="anio"> * Año </label>
-                                <select id="anio" name="anio" class="form-control input-sm select2"  onchange="f_filtro_mes();" required>
+                                <label for="anio_desde"> * Año Desde </label>
+                                <select id="anio_desde" name="anio_desde" class="form-control input-sm select2" onchange="f_filtro_mes_desde(); validar_rango_periodo();" required>
                                     <option value="">Seleccione una opcion..</option>
                                     <?=$lista_ejer;?>
                                 </select>
                             </div>
 
                             <div class="col-md-3">
-                                <label for="mes"> Mes </label>
-                                <select id="mes" name="mes" class="form-control input-sm select2">
+                                <label for="mes_desde"> Mes Desde </label>
+                                <select id="mes_desde" name="mes_desde" class="form-control input-sm select2" onchange="validar_rango_periodo();">
                                     <option value="">Seleccione una opcion..</option>
                                     <?=$lista_mes;?>
                                 </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="col-md-3">
+                                <label for="anio_hasta"> * Año Hasta </label>
+                                <select id="anio_hasta" name="anio_hasta" class="form-control input-sm select2" onchange="f_filtro_mes_hasta(); validar_rango_periodo();" required>
+                                    <option value="">Seleccione una opcion..</option>
+                                    <?=$lista_ejer;?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="mes_hasta"> Mes Hasta </label>
+                                <select id="mes_hasta" name="mes_hasta" class="form-control input-sm select2" onchange="validar_rango_periodo();">
+                                    <option value="">Seleccione una opcion..</option>
+                                    <?=$lista_mes;?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label>&nbsp;</label>
+                                <div id="mensaje_rango" class="text-danger"></div>
                             </div>
                         </div>
                     </div>
@@ -331,7 +466,7 @@
                         <div class="form-row"> 
                             <div class="col-md-12">
                                     <div><label for="consultar">* Consultar:</label></div>
-                                    <div class="btn btn-primary btn-sm" onclick="generar();" style="width: 100%">
+                                    <div id="btnProcesar" class="btn btn-primary btn-sm disabled" data-disabled="true" onclick="generar();" style="width: 100%">
                                         <span class="glyphicon glyphicon-cog"></span>
                                         Procesar
                                     </div>
@@ -341,9 +476,28 @@
                 </div>
             </form>
         </div>
+        <div id="modalResumenDepre" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title">Resumen de Ejecución</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div id="divResumenDepreciacion"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
+                        <button type="button" class="btn btn-primary" onclick="irReporteDepreciacion();">Ir a Reporte de Depreciación</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </body>
          
-    <script>genera_cabecera_formulario(); generaSelect2();/*genera_detalle();genera_form_detalle();*/</script> 
+    <script>genera_cabecera_formulario(); generaSelect2(); validar_rango_periodo();/*genera_detalle();genera_form_detalle();*/</script> 
     <? /*     * ***************************************************************** */ ?>
     <? /* NO MODIFICAR ESTA SECCION */ ?>
 <? } ?>

@@ -2,11 +2,45 @@
 /* ARCHIVO COMUN PARA LA EJECUCION DEL SERVIDOR AJAX DEL MODULO */
 /***************************************************/
 /* NO MODIFICAR */
-include_once('../../Include/config.inc.php');
-include_once(path(DIR_INCLUDE).'conexiones/db_conexion.php');
-include_once(path(DIR_INCLUDE).'comun.lib.php');
-include_once(path(DIR_INCLUDE).'Clases/Formulario/Formulario.class.php');
-require_once (path(DIR_INCLUDE).'Clases/xajax/xajax_core/xajax.inc.php');
+if (!function_exists('ajax_fatal')) {
+    function ajax_fatal($message)
+    {
+        if (!headers_sent()) {
+            header('Content-Type: text/plain; charset=utf-8');
+        }
+        echo $message;
+        exit;
+    }
+}
+
+$config_path = __DIR__ . '/../../Include/config.inc.php';
+if (!file_exists($config_path)) {
+    ajax_fatal('Error: No se encontró Include/config.inc.php. Verifica la ruta ../../Include/ desde activos_revalorizacion/_Ajax.comun.php');
+}
+include_once($config_path);
+
+$db_path = path(DIR_INCLUDE) . 'conexiones/db_conexion.php';
+$comun_path = path(DIR_INCLUDE) . 'comun.lib.php';
+$formulario_path = path(DIR_INCLUDE) . 'Clases/Formulario/Formulario.class.php';
+$xajax_path = path(DIR_INCLUDE) . 'Clases/xajax/xajax_core/xajax.inc.php';
+
+if (!file_exists($db_path)) {
+    ajax_fatal('Error: No se encontró conexiones/db_conexion.php en DIR_INCLUDE.');
+}
+if (!file_exists($comun_path)) {
+    ajax_fatal('Error: No se encontró comun.lib.php en DIR_INCLUDE.');
+}
+if (!file_exists($formulario_path)) {
+    ajax_fatal('Error: No se encontró Formulario.class.php en DIR_INCLUDE.');
+}
+if (!file_exists($xajax_path)) {
+    ajax_fatal('Error: No se encontró xajax.inc.php en DIR_INCLUDE.');
+}
+
+include_once($db_path);
+include_once($comun_path);
+include_once($formulario_path);
+require_once($xajax_path);
 /***************************************************/
 /* INSTANCIA DEL SERVIDOR AJAX DEL MODULO*/
 $xajax = new xajax('_Ajax.server.php');
