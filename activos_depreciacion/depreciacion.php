@@ -18,20 +18,25 @@
     <!--Javascript--> 
 
     <style>
-        #modalResumenDepre {
-            overflow-y: auto !important;
-            max-height: 100vh;
+        #modalResumenDepre.modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            overflow: hidden;
         }
 
-        #modalResumenDepre .modal-content {
+        #modalResumenDepre .modal-resumen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 1200px;
             max-height: 90vh;
             display: flex;
             flex-direction: column;
-        }
-
-        #modalResumenDepre .modal-body {
-            overflow-y: auto;
-            flex: 1 1 auto;
+            background: #fff;
+            border-radius: 4px;
         }
 
         #modalResumenDepre .modal-header,
@@ -39,7 +44,14 @@
             flex: 0 0 auto;
         }
 
-        #modalResumenDepre .modal-content table {
+        #modalResumenDepre .modal-body-scroll {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            min-height: 0;
+            padding: 10px;
+        }
+
+        #modalResumenDepre .modal-body-scroll table {
             width: 100%;
         }
     </style>
@@ -487,21 +499,19 @@
                 </div>
             </form>
         </div>
-        <div id="modalResumenDepre" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <h4 class="modal-title">Resumen de Ejecución</h4>
-                    </div>
-                    <div class="modal-body">
-                        <div id="divResumenDepreciacion"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
-                    </div>
+        <div id="modalResumenDepre" class="modal fade modal-overlay" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
+            <div class="modal-resumen">
+                <div class="modal-header">
+                    <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title">Resumen de Ejecución</h4>
+                </div>
+                <div class="modal-body-scroll">
+                    <div id="divResumenDepreciacion"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
                 </div>
             </div>
         </div>
