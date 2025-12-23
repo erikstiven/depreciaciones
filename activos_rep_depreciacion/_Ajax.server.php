@@ -861,7 +861,7 @@ function generar($aForm = '')
 					 saeact.act_fcmp_act, 
 					 saeact.act_fiman_act,  
 					 saeact.act_fdep_act,   
-					 max(saecdep.cdep_ani_depr) as cdep_ani_depr,   
+					 max((saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr) as periodo_ultimo,   
 					 saegact.gact_cod_gact,   
 					 saegact.gact_des_gact,   
 					 saesgac.sgac_cod_sgac,   
@@ -872,7 +872,7 @@ function generar($aForm = '')
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
 					 and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) <= ($anio_iter * 100 + $mes_iter)) as cdep_dep_acum,
-					 sum(saecdep.cdep_gas_depn) as cdep_gas_depn, 					 
+					 sum(saecdep.cdep_val_repr) as cdep_gas_depn, 					 
 					 max(saecdep.cdep_mes_depr) as cdep_mes_depr,
 					 DATE_PART('year', act_fiman_act ) anio,
 					 DATE_PART('month',act_fiman_act) mes ,
@@ -894,7 +894,7 @@ function generar($aForm = '')
 					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $mes_iter))
 						$filtro
 						GROUP BY 1,2,3,4,5,6,7,8,10,11,12,13,14,17,18,19
-						ORDER BY saegact.gact_des_gact, saesgac.sgac_des_sgac, saeact.act_nom_act, cdep_ani_depr, cdep_mes_depr ";
+						ORDER BY saegact.gact_des_gact, saesgac.sgac_des_sgac, saeact.act_nom_act, periodo_ultimo ";
 				//echo $sql; exit;
 				//$oReturn->alert($sql);
 				if ($oIfx->Query($sql)) {
@@ -909,6 +909,7 @@ function generar($aForm = '')
 							$vidaUtil      = $oIfx->f('act_vutil_act');
 							$anio 		   = $oIfx->f('cdep_ani_depr');
 							$mes 		   = $oIfx->f('cdep_mes_depr');
+							$periodo_formateado = sprintf('%04d-%02d', $anio, $mes);
 							$periodo_encontrado = ($anio * 100) + $mes;
 							if ($periodo_encontrado > $max_mes_encontrado) {
 								$max_mes_encontrado = $periodo_encontrado;
@@ -938,7 +939,7 @@ function generar($aForm = '')
 										<td>' . $fechaDepre . ' </td>
 										<td align = right>' . $vidaUtil . ' </td>
 										<td align = right>' . $anio . ' </td>
-										<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+										<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 										<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -970,7 +971,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+												<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -989,7 +990,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+												<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1021,7 +1022,7 @@ function generar($aForm = '')
 											<td>' . $fechaDepre . ' </td>
 											<td align = right>' . $vidaUtil . ' </td>
 											<td align = right>' . $anio . ' </td>
-											<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+										<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 											<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1107,7 +1108,7 @@ function generar($aForm = '')
 					 saeact.act_fcmp_act, 
 					 saeact.act_fiman_act,  
 					 saeact.act_fdep_act,   
-					 max(saecdep.cdep_ani_depr) as cdep_ani_depr,   
+					 max((saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr) as periodo_ultimo,   
 					 saegact.gact_cod_gact,   
 					 saegact.gact_des_gact,   
 					 saesgac.sgac_cod_sgac,   
@@ -1118,8 +1119,19 @@ function generar($aForm = '')
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
 					 and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) <= ($anio_fin * 100 + $mes_fin)) as cdep_dep_acum,
-					 MIN(saecdep.cdep_gas_depn) as cdep_gas_depn, 					 
-					 max(saecdep.cdep_mes_depr) as cdep_mes_depr,
+					 (select COALESCE(MAX(c.cdep_val_repr), 0)
+					  from saecdep c
+					  where c.cdep_cod_acti = saecdep.cdep_cod_acti
+					  and c.act_cod_empr = saecdep.act_cod_empr
+					  and c.act_cod_sucu = saecdep.act_cod_sucu
+					  and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) = (
+					  	select MAX((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr)
+					  	from saecdep c2
+					  	where c2.cdep_cod_acti = saecdep.cdep_cod_acti
+					  	and c2.act_cod_empr = saecdep.act_cod_empr
+					  	and c2.act_cod_sucu = saecdep.act_cod_sucu
+					  	and ((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr) between ($anio * 100 + $mes) and ($anio_fin * 100 + $mes_fin)
+					  )) as cdep_gas_depn,
 					 DATE_PART('year', act_fiman_act ) anio,
 					 DATE_PART('month',act_fiman_act) mes,
 					 saeact.act_vres_act,
@@ -1154,11 +1166,13 @@ function generar($aForm = '')
 						$nombre 	   = $oIfx->f('act_nom_act');
 						$fechaDepre    = $oIfx->f('act_fdep_act');
 						$vidaUtil      = $oIfx->f('act_vutil_act');
-						$anio 		   = $oIfx->f('cdep_ani_depr');
-						$mes 		   = $oIfx->f('cdep_mes_depr');
-						if ((($anio_fin * 100) + $mes_fin) > (($anio * 100) + $mes)) {
+						$periodo_ultimo = intval($oIfx->f('periodo_ultimo'));
+						$anio = $periodo_ultimo > 0 ? intdiv($periodo_ultimo, 100) : 0;
+						$mes = $periodo_ultimo > 0 ? ($periodo_ultimo % 100) : 0;
+						if ((($anio_fin * 100) + $mes_fin) > $periodo_ultimo) {
 							$mostrar_aviso_mes = true;
 						}
+						$periodo_formateado = $periodo_ultimo > 0 ? sprintf('%04d-%02d', $anio, $mes) : '';
 						$valorCompra   = $oIfx->f('act_val_comp');
 						$valorResidu   = $oIfx->f('act_vres_act');
 						$serie         = $oIfx->f('act_seri_act');
@@ -1186,7 +1200,7 @@ function generar($aForm = '')
 										<td>' . $fechaDepre . ' </td>
 										<td align = right>' . $vidaUtil . ' </td>
 										<td align = right>' . $anio . ' </td>
-										<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+										<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 										<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1218,7 +1232,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+												<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1237,7 +1251,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+												<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1269,7 +1283,7 @@ function generar($aForm = '')
 											<td>' . $fechaDepre . ' </td>
 											<td align = right>' . $vidaUtil . ' </td>
 											<td align = right>' . $anio . ' </td>
-											<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
+											<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 											<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
