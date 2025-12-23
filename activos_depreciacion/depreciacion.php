@@ -20,10 +20,6 @@
         /* Causa del recorte: bootstrap-3.3.7-dist/css/bootstrap.min.css define
            .modal { position: fixed; overflow: hidden; }, y el diálogo crecía
            sin altura límite, por lo que el cuerpo quedaba fuera del overlay. */
-        #modalResumenDepre {
-            overflow: hidden;
-        }
-
         /* El diálogo usa 80vh para forzar scroll interno sin tocar otros modales. */
         #modalResumenDepre .modal-dialog {
             width: 90%;
@@ -37,21 +33,6 @@
             height: 100%;
             max-height: 80vh;
             overflow-y: auto;
-        }
-
-        #modalResumenDepre .modal-header,
-        #modalResumenDepre .modal-footer {
-            position: sticky;
-            background: #fff;
-            z-index: 2;
-        }
-
-        #modalResumenDepre .modal-header {
-            top: 0;
-        }
-
-        #modalResumenDepre .modal-footer {
-            bottom: 0;
         }
 
         #modalResumenDepre .modal-body {
