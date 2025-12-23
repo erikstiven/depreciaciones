@@ -150,6 +150,9 @@ function f_filtro_activos_desde($aForm)
     if ($subgrupo === '0') {
         $subgrupo = '';
     }
+    if ($subgrupo === '0') {
+        $subgrupo = '';
+    }
     if (empty($empresa)) {
         $empresa = $idempresa;
     }
@@ -208,6 +211,9 @@ function f_filtro_activos_hasta($aForm)
     $empresa = $aForm['empresa'] ?? '';
     $sucursal = $aForm['sucursal'] ?? '';
     $subgrupo = $aForm['cod_subgrupo'] ?? '';
+    if ($subgrupo === '0') {
+        $subgrupo = '';
+    }
     if ($subgrupo === '0') {
         $subgrupo = '';
     }
@@ -399,6 +405,9 @@ function f_filtro_subgrupo($aForm = '')
     //variables formulario
     $empresa = $aForm['empresa'] ?? '';
     $codigoGrupo = $aForm['cod_grupo'] ?? '';
+    if ($codigoGrupo === '0') {
+        $codigoGrupo = '';
+    }
     if ($codigoGrupo === '0') {
         $codigoGrupo = '';
     }
