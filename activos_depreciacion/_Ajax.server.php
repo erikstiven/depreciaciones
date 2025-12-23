@@ -406,8 +406,14 @@ function f_filtro_subgrupo($aForm = '')
         error_log("f_filtro_subgrupo params missing: empresa={$empresa}, cod_grupo={$codigoGrupo}");
         $oReturn->alert('Debe seleccionar empresa y grupo para listar subgrupos.');
         $oReturn->script('eliminar_lista_subgrupo();');
+        $oReturn->script('eliminar_lista_activo_desde();');
+        $oReturn->script('eliminar_lista_activo_hasta();');
         return $oReturn;
     }
+
+    $oReturn->script('eliminar_lista_subgrupo();');
+    $oReturn->script('eliminar_lista_activo_desde();');
+    $oReturn->script('eliminar_lista_activo_hasta();');
 
     try {
         // DATOS DEL SUBGRUPO
@@ -419,7 +425,6 @@ function f_filtro_subgrupo($aForm = '')
         if (!$oIfx->Query($sql)) {
             throw new Exception('Error al ejecutar consulta de subgrupos.');
         }
-        $oReturn->script('eliminar_lista_subgrupo();');
         if ($oIfx->NumFilas() > 0) {
             do {
                 $oReturn->script(('anadir_elemento_subgrupo(' . $i++ . ',\'' . $oIfx->f('sgac_cod_sgac') . '\', \'' . $oIfx->f('sgac_des_sgac') . '\' )'));
@@ -428,11 +433,8 @@ function f_filtro_subgrupo($aForm = '')
     } catch (Exception $e) {
         error_log('f_filtro_subgrupo error: ' . $e->getMessage());
         $oReturn->alert('Error al cargar subgrupos. Intente nuevamente.');
-        $oReturn->script('eliminar_lista_subgrupo();');
         return $oReturn;
     }
-    $oReturn->script('f_filtro_activos_desde()');
-    $oReturn->script('f_filtro_activos_hasta()');
     return $oReturn;
 }
 
