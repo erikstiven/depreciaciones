@@ -16,6 +16,33 @@
     <!-- Theme style -->
     <link rel="stylesheet" href="<?=$_COOKIE["JIREH_COMPONENTES"]?>dist/css/AdminLTE.min.css">
     <!--Javascript--> 
+
+    <style>
+        #modalResumenDepre {
+            overflow-y: auto !important;
+            max-height: 100vh;
+        }
+
+        #modalResumenDepre .modal-content {
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #modalResumenDepre .modal-body {
+            overflow-y: auto;
+            flex: 1 1 auto;
+        }
+
+        #modalResumenDepre .modal-header,
+        #modalResumenDepre .modal-footer {
+            flex: 0 0 auto;
+        }
+
+        #modalResumenDepre .modal-content table {
+            width: 100%;
+        }
+    </style>
     
   
     <script src="<?=$_COOKIE["JIREH_INCLUDE"]?>js/dataTables/jquery.dataTables.min.js"></script>
@@ -462,14 +489,14 @@
         </div>
         <div id="modalResumenDepre" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
             <div class="modal-dialog modal-lg">
-                <div class="modal-content" style="max-height: 90vh;">
+                <div class="modal-content">
                     <div class="modal-header">
                         <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                         <h4 class="modal-title">Resumen de Ejecución</h4>
                     </div>
-                    <div class="modal-body" style="max-height: calc(90vh - 140px); overflow-y: auto;">
+                    <div class="modal-body">
                         <div id="divResumenDepreciacion"></div>
                     </div>
                     <div class="modal-footer">
