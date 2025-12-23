@@ -540,6 +540,7 @@ function generar($aForm = '')
                 $total_evaluados = 0;
                 $total_procesados = 0;
                 $total_omitidos = 0;
+                $alertas_pendientes = [];
                 do {
                     // LEER DATOS AVTIVO
                     $codigo_activo        =    $oIfxA->f('act_cod_act');
@@ -579,6 +580,8 @@ function generar($aForm = '')
                     if ($intervalo === 'M') {
                         $vida_util_meses = intval($vida_util) * 12;
                     }
+                    $estado_contable = 'OK';
+                    $periodo_esperado = $periodo_fin;
                     $valor_neto = floatval($valor_compra) - floatval($valor_recidual);
                     $depreciacion_mensual = 0;
                     $depreciacion_valida = false;
@@ -599,6 +602,22 @@ function generar($aForm = '')
                     $fin_vida_util_dt->modify('+' . max($vida_util_meses - 1, 0) . ' months')->modify('last day of this month');
                     if ($fin_activo_dt && $fin_activo_dt < $fin_vida_util_dt) {
                         $fin_vida_util_dt = $fin_activo_dt;
+                    }
+                    $periodo_esperado = min($periodo_fin, intval($fin_vida_util_dt->format('Y')) * 100 + intval($fin_vida_util_dt->format('m')));
+                    $sql_ultimo_periodo = "select max(cdep_ani_depr * 100 + cdep_mes_depr) as ultimo_periodo
+										from saecdep
+										where cdep_cod_acti = $codigo_activo
+										and act_cod_empr = $empresa
+										and act_cod_sucu = $sucursal";
+                    $ultimo_periodo_real = intval(consulta_string($sql_ultimo_periodo, 'ultimo_periodo', $oIfx, 0));
+                    if ($periodo_esperado > $ultimo_periodo_real) {
+                        $estado_contable = 'PENDIENTE';
+                        $ultimo_mostrado = $ultimo_periodo_real > 0
+                            ? substr($ultimo_periodo_real, 4, 2) . '/' . substr($ultimo_periodo_real, 0, 4)
+                            : '--/----';
+                        $alertas_pendientes[] = 'El activo ' . $clave_activo . ' tiene meses pendientes de depreciar. '
+                            . 'Último mes depreciado: ' . $ultimo_mostrado
+                            . ' Mes esperado: ' . substr($periodo_esperado, 4, 2) . '/' . substr($periodo_esperado, 0, 4);
                     }
 
                     $periodo_actual = clone $fecha_inicio_rango;
@@ -695,6 +714,7 @@ function generar($aForm = '')
                             'mes' => $mes_iter,
                             'estado' => $estado,
                             'motivo' => $motivo,
+                            'estado_contable' => $estado_contable,
                         ];
                         $total_evaluados++;
                         if ($estado === 'PROCESADO') {
@@ -709,6 +729,7 @@ function generar($aForm = '')
                 $tabla_detalle = '';
                 foreach ($audit_log as $fila) {
                     $clase_estado = $fila['estado'] === 'PROCESADO' ? 'label label-success' : 'label label-warning';
+                    $clase_contable = $fila['estado_contable'] === 'OK' ? 'label label-success' : 'label label-danger';
                     $tabla_detalle .= '<tr>'
                         . '<td>' . htmlspecialchars($fila['activo'], ENT_QUOTES, 'UTF-8') . '</td>'
                         . '<td>' . htmlspecialchars($fila['nombre'], ENT_QUOTES, 'UTF-8') . '</td>'
@@ -716,7 +737,16 @@ function generar($aForm = '')
                         . '<td>' . str_pad($fila['mes'], 2, '0', STR_PAD_LEFT) . '</td>'
                         . '<td><span class="' . $clase_estado . '">' . $fila['estado'] . '</span></td>'
                         . '<td>' . htmlspecialchars($fila['motivo'], ENT_QUOTES, 'UTF-8') . '</td>'
+                        . '<td><span class="' . $clase_contable . '">' . $fila['estado_contable'] . '</span></td>'
                         . '</tr>';
+                }
+
+                $alerta_html = '';
+                if (!empty($alertas_pendientes)) {
+                    $alerta_html = '<div class="alert alert-info" style="margin-top: 10px;">'
+                        . '<strong>Alertas de control:</strong><ul><li>'
+                        . implode('</li><li>', array_map('htmlspecialchars', $alertas_pendientes))
+                        . '</li></ul></div>';
                 }
 
                 $resumen_html = '<div class="row">'
@@ -726,6 +756,7 @@ function generar($aForm = '')
                     . '<p><strong>Omitidos:</strong> ' . $total_omitidos . '</p>'
                     . '</div>'
                     . '</div>'
+                    . $alerta_html
                     . '<div class="table-responsive" style="max-height: 300px; overflow: auto;">'
                     . '<table class="table table-bordered table-condensed">'
                     . '<thead><tr>'
@@ -735,6 +766,7 @@ function generar($aForm = '')
                     . '<th>Mes</th>'
                     . '<th>Estado</th>'
                     . '<th>Motivo</th>'
+                    . '<th>Estado contable</th>'
                     . '</tr></thead>'
                     . '<tbody>' . $tabla_detalle . '</tbody>'
                     . '</table>'
@@ -759,6 +791,7 @@ function generar($aForm = '')
                     . '<th>Mes</th>'
                     . '<th>Estado</th>'
                     . '<th>Motivo</th>'
+                    . '<th>Estado contable</th>'
                     . '</tr></thead>'
                     . '<tbody></tbody>'
                     . '</table>'

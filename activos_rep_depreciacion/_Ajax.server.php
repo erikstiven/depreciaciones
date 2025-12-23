@@ -110,8 +110,12 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 					<td>
 						<input type="checkbox" name="detallado" id="detallado" value="S">							
 					</td>
-					<td> </td>						
-					<td> </td>						
+					<td>
+						<label for="control_depreciacion">Control de Depreciaci&oacute;n</label>
+					</td>
+					<td>
+						<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
+					</td>						
 				</tr>
 				<tr>
                     <td>' . $ifu->ObjetoHtmlLBL('anio') . '</td>
@@ -621,6 +625,7 @@ function generar($aForm = '')
 	$estado_reva  = $aForm['tipo'];
 
 	$detallado	  = $aForm['detallado'];
+	$control_depreciacion = $aForm['control_depreciacion'];
 	// $fecha_corte  = $aForm['fecha_corte'];
 	// $fecha_corte  = fecha_informix_func($fecha_corte);
 	// $fechaServer  = date("Y-m-d");
@@ -674,6 +679,107 @@ function generar($aForm = '')
 								<td class="bg-primary text-center"><h5> Valor por Depr. </h5></td>
 							</tr> ';
 		// CAVECERA TABLA
+
+		if ($control_depreciacion == 'S') {
+			$periodo_fin_form = intval($anio_fin) * 100 + intval($mes_fin);
+			$periodo_fin_dt = DateTime::createFromFormat('Y-n-j', $anio_fin . '-' . intval($mes_fin) . '-1');
+			if (!$periodo_fin_dt) {
+				$oReturn->alert('Rango de fechas inválido. Verifique Año/Mes Hasta.');
+				return $oReturn;
+			}
+
+			$html = '<table class="table table-striped table-hover " style="width: 100%; margin-bottom: 0px;">
+							<tr class="msgFrm">
+								<td class="bg-primary text-center"><h5> Activo </h5></td>
+								<td class="bg-primary text-center"><h5> Fecha de compra </h5></td>
+								<td class="bg-primary text-center"><h5> Vida &uacute;til </h5></td>
+								<td class="bg-primary text-center"><h5> &Uacute;ltimo mes depreciado </h5></td>
+								<td class="bg-primary text-center"><h5> Mes esperado </h5></td>
+								<td class="bg-primary text-center"><h5> Estado </h5></td>
+							</tr> ';
+
+			$sql_control = " SELECT saeact.act_cod_act,
+					 saeact.act_clave_act,
+					 saeact.act_nom_act,
+					 saeact.act_fcmp_act,
+					 saeact.act_fdep_act,
+					 saeact.act_vutil_act,
+					 saeact.act_fiman_act,
+					 saeact.act_cod_sucu,
+					 (select max(c.cdep_ani_depr * 100 + c.cdep_mes_depr)
+					  from saecdep c
+					  where c.cdep_cod_acti = saeact.act_cod_act
+					  and c.act_cod_empr = saeact.act_cod_empr
+					  and c.act_cod_sucu = saeact.act_cod_sucu) as periodo_ultimo
+					FROM saeact,
+						 saesgac
+				   WHERE ( saesgac.sgac_cod_sgac = saeact.sgac_cod_sgac ) and  
+						 ( saesgac.sgac_cod_empr = saeact.act_cod_empr ) and  
+						 ( saeact.act_clave_padr is null or saeact.act_clave_padr = '') and
+						 ( saeact.act_cod_empr = $empresa ) AND  
+						 saeact.act_ext_act = 1
+						 $filtro
+					ORDER BY saeact.act_nom_act ";
+
+			if ($oIfx->Query($sql_control)) {
+				if ($oIfx->NumFilas() > 0) {
+					$ctrl_reg++;
+					do {
+						$clave = $oIfx->f('act_clave_act');
+						$nombre = $oIfx->f('act_nom_act');
+						$fecha_compra = $oIfx->f('act_fcmp_act');
+						$fecha_depreciacion = $oIfx->f('act_fdep_act');
+						$vida_util = intval($oIfx->f('act_vutil_act'));
+						$periodo_ultimo = intval($oIfx->f('periodo_ultimo'));
+
+						$fecha_inicio_activo = $fecha_depreciacion;
+						if (empty($fecha_inicio_activo)) {
+							$fecha_inicio_activo = $fecha_compra;
+						}
+						$inicio_activo_dt = DateTime::createFromFormat('Y-m-d', $fecha_inicio_activo);
+						if (!$inicio_activo_dt) {
+							$inicio_activo_dt = clone $periodo_fin_dt;
+						}
+
+						$vida_util_meses = $vida_util * 12;
+						$fin_vida_util_dt = clone $inicio_activo_dt;
+						$fin_vida_util_dt->modify('+' . max($vida_util_meses - 1, 0) . ' months')->modify('last day of this month');
+						$periodo_esperado = min($periodo_fin_form, intval($fin_vida_util_dt->format('Y')) * 100 + intval($fin_vida_util_dt->format('m')));
+
+						$ultimo_mostrado = $periodo_ultimo > 0
+							? substr($periodo_ultimo, 4, 2) . '/' . substr($periodo_ultimo, 0, 4)
+							: '--/----';
+						$esperado_mostrado = $periodo_esperado > 0
+							? substr($periodo_esperado, 4, 2) . '/' . substr($periodo_esperado, 0, 4)
+							: '--/----';
+						$estado = ($periodo_ultimo >= $periodo_esperado && $periodo_esperado > 0) ? 'OK' : 'Pendiente';
+						$clase_estado = $estado === 'OK' ? 'label label-success' : 'label label-danger';
+
+						$html .= '<tr>'
+							. '<td>' . htmlspecialchars($clave, ENT_QUOTES, 'UTF-8') . ' - ' . htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') . '</td>'
+							. '<td>' . htmlspecialchars($fecha_compra, ENT_QUOTES, 'UTF-8') . '</td>'
+							. '<td align="right">' . $vida_util . '</td>'
+							. '<td align="right">' . $ultimo_mostrado . '</td>'
+							. '<td align="right">' . $esperado_mostrado . '</td>'
+							. '<td><span class="' . $clase_estado . '">' . $estado . '</span></td>'
+							. '</tr>';
+					} while ($oIfx->SiguienteRegistro());
+				}
+			}
+			$oIfx->Free();
+			$html .= '</table>';
+
+			if ($ctrl_reg != 0) {
+				$_SESSION['ACT_REP_DEPR'] = $html;
+			} else {
+				$html = '<div style="font-size:14px;" ><b>..Sin Datos..<b/></div>';
+			}
+
+			$oReturn->assign("reporte", "innerHTML", $html);
+			$oReturn->alert('Proceso Terminado con Exito');
+			$oIfx->QueryT('COMMIT WORK;');
+			return $oReturn;
+		}
 
 		if ($detallado == 'S') {
 			$max_mes_encontrado = 0;
