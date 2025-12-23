@@ -698,6 +698,7 @@ function generar($aForm = '')
 				$sumaDeprAcumulada	  = 0;
 				$sumaValorPorDepr	  = 0;
 				// LISTA DEPRECIACION DE ACTIVOS
+				// Dep. Acum. usa SUM(cdep_val_repr) hasta el periodo seleccionado (sin recalcular).
 				$sql = " SELECT saeact.act_cod_act,   
 					 saeact.act_clave_act,   
 					 saeact.act_nom_act,   
@@ -711,13 +712,12 @@ function generar($aForm = '')
 					 saegact.gact_des_gact,   
 					 saesgac.sgac_cod_sgac,   
 					 saesgac.sgac_des_sgac,   					 
-					(select c.cdep_dep_acum 
+					(select COALESCE(SUM(c.cdep_val_repr), 0)
 					 from saecdep c 
 					 where c.cdep_cod_acti = saecdep.cdep_cod_acti
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
-					 and c.cdep_ani_depr = $anio_iter
-					 and c.cdep_mes_depr = $mes_iter) as cdep_dep_acum,
+					 and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) <= ($anio_iter * 100 + $mes_iter)) as cdep_dep_acum,
 					 sum(saecdep.cdep_gas_depn) as cdep_gas_depn, 					 
 					 max(saecdep.cdep_mes_depr) as cdep_mes_depr,
 					 DATE_PART('year', act_fiman_act ) anio,
@@ -760,11 +760,11 @@ function generar($aForm = '')
 							$serie         = $oIfx->f('act_seri_act');
 							$grupo  	   = $oIfx->f('gact_des_gact');
 							$subgrupo 	   = $oIfx->f('sgac_des_sgac');
-							$deprAnterior  = $oIfx->f('cdep_dep_acum');
+							$deprAcumulada = $oIfx->f('cdep_dep_acum');
 							$gastoDepr     = $oIfx->f('cdep_gas_depn');
+							$deprAnterior  = max($deprAcumulada - $gastoDepr, 0);
 
 							$valorNeto     = $valorCompra - $valorResidu;
-							$deprAcumulada = $deprAnterior + $gastoDepr;
 							$valorPorDepr  = $valorCompra -  $deprAcumulada;
 
 							if ($i < 2) {
@@ -934,6 +934,7 @@ function generar($aForm = '')
 
 		else {
 			// LISTA DEPRECIACION DE ACTIVOS
+			// Dep. Acum. usa SUM(cdep_val_repr) hasta el periodo seleccionado (sin recalcular).
 			$sql = " SELECT saeact.act_cod_act,   
 					 saeact.act_clave_act,   
 					 saeact.act_nom_act,   
@@ -947,13 +948,12 @@ function generar($aForm = '')
 					 saegact.gact_des_gact,   
 					 saesgac.sgac_cod_sgac,   
 					 saesgac.sgac_des_sgac,   					 
-					(select c.cdep_dep_acum 
+					(select COALESCE(SUM(c.cdep_val_repr), 0)
 					 from saecdep c 
 					 where c.cdep_cod_acti = saecdep.cdep_cod_acti
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
-					 and c.cdep_ani_depr = $anio
-					 and c.cdep_mes_depr = $mes_fin) as cdep_dep_acum,
+					 and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) <= ($anio_fin * 100 + $mes_fin)) as cdep_dep_acum,
 					 MIN(saecdep.cdep_gas_depn) as cdep_gas_depn, 					 
 					 max(saecdep.cdep_mes_depr) as cdep_mes_depr,
 					 DATE_PART('year', act_fiman_act ) anio,
@@ -997,10 +997,9 @@ function generar($aForm = '')
 						$serie         = $oIfx->f('act_seri_act');
 						$grupo  	   = $oIfx->f('gact_des_gact');
 						$subgrupo 	   = $oIfx->f('sgac_des_sgac');
-						//$deprAnterior  = $oIfx->f('cdep_dep_acum');
 						$gastoDepr     = $oIfx->f('cdep_gas_depn');
-						$deprAnterior     = $oIfx->f('cdep_val_rep1')?:0;
-						$deprAcumulada     = $oIfx->f('cdep_dep_acum');
+						$deprAcumulada = $oIfx->f('cdep_dep_acum');
+						$deprAnterior  = max($deprAcumulada - $gastoDepr, 0);
 
 
 
