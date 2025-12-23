@@ -110,8 +110,12 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 					<td>
 						<input type="checkbox" name="detallado" id="detallado" value="S">							
 					</td>
-					<td> </td>						
-					<td> </td>						
+					<td>
+						<label for="control_depreciacion">Control de Depreciaci&oacute;n</label>
+					</td>
+					<td>
+						<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
+					</td>						
 				</tr>
 				<tr>
                     <td>' . $ifu->ObjetoHtmlLBL('anio') . '</td>
@@ -621,6 +625,7 @@ function generar($aForm = '')
 	$estado_reva  = $aForm['tipo'];
 
 	$detallado	  = $aForm['detallado'];
+	$control_depreciacion = $aForm['control_depreciacion'];
 	// $fecha_corte  = $aForm['fecha_corte'];
 	// $fecha_corte  = fecha_informix_func($fecha_corte);
 	// $fechaServer  = date("Y-m-d");
@@ -654,16 +659,18 @@ function generar($aForm = '')
 
 
 
-		unset($_SESSION['ACT_REP_DEPR']);
-		$html = '';
-		$html .= '<table class="table table-striped table-hover " style="width: 100%; margin-bottom: 0px;">
+	unset($_SESSION['ACT_REP_DEPR']);
+	$mostrar_aviso_mes = false;
+	$aviso_mes_html = '';
+	$html = '';
+	$html .= '<table class="table table-striped table-hover " style="width: 100%; margin-bottom: 0px;">
 							<tr class="msgFrm">
 								<td class="bg-primary text-center"><h5> Clave </h5></td>
 								<td class="bg-primary text-center"><h5> Nombre </h5></td>
 								<td class="bg-primary text-center"><h5> F. Calculo </h5></td>
 								<td class="bg-primary text-center"><h5> Vida Util </h5></td>
 								<td class="bg-primary text-center"><h5> Anio </h5></td>
-								<td class="bg-primary text-center"><h5> Mes </h5></td>
+								<td class="bg-primary text-center"><h5><span title="Este valor corresponde al último mes con depreciación registrada, no al filtro Mes Hasta.">Último mes depreciado</span></h5></td>
 								<td class="bg-primary text-center"><h5> Valor Compra </h5> </td>
 								<td class="bg-primary text-center"><h5> Valor Residual </h5></td>
 								<td class="bg-primary text-center"><h5> Valor Neto </h5></td>
@@ -674,7 +681,154 @@ function generar($aForm = '')
 							</tr> ';
 		// CAVECERA TABLA
 
+		if ($control_depreciacion == 'S') {
+			$periodo_fin_form = intval($anio_fin) * 100 + intval($mes_fin);
+			$periodo_fin_dt = DateTime::createFromFormat('Y-n-j', $anio_fin . '-' . intval($mes_fin) . '-1');
+			if (!$periodo_fin_dt) {
+				$oReturn->alert('Rango de fechas inválido. Verifique Año/Mes Hasta.');
+				return $oReturn;
+			}
+
+			$html = '<table class="table table-striped table-hover " style="width: 100%; margin-bottom: 0px;">
+							<tr class="msgFrm">
+								<td class="bg-primary text-center"><h5> Activo </h5></td>
+								<td class="bg-primary text-center"><h5> A&ntilde;o </h5></td>
+								<td class="bg-primary text-center"><h5> Mes </h5></td>
+								<td class="bg-primary text-center"><h5> Estado </h5></td>
+								<td class="bg-primary text-center"><h5> Motivo </h5></td>
+								<td class="bg-primary text-center"><h5> Estado contable </h5></td>
+							</tr> ';
+
+			$sql_control = " SELECT saeact.act_cod_act,
+					 saeact.act_clave_act,
+					 saeact.act_nom_act,
+					 saeact.act_fcmp_act,
+					 saeact.act_fdep_act,
+					 saeact.act_vutil_act,
+					 saeact.act_fiman_act,
+					 saeact.act_cod_sucu,
+					 (select max(c.cdep_ani_depr * 100 + c.cdep_mes_depr)
+					  from saecdep c
+					  where c.cdep_cod_acti = saeact.act_cod_act
+					  and c.act_cod_empr = saeact.act_cod_empr
+					  and c.act_cod_sucu = saeact.act_cod_sucu) as periodo_ultimo
+					FROM saeact,
+						 saesgac,
+						 saegact
+				   WHERE ( saesgac.sgac_cod_sgac = saeact.sgac_cod_sgac ) and  
+						 ( saesgac.sgac_cod_empr = saeact.act_cod_empr ) and  
+						 ( saegact.gact_cod_gact = saesgac.gact_cod_gact ) and
+						 ( saegact.gact_cod_empr = saesgac.sgac_cod_empr ) and
+						 ( saeact.act_clave_padr is null or saeact.act_clave_padr = '') and
+						 ( saeact.act_cod_empr = $empresa ) AND  
+						 saeact.act_ext_act = 1
+						 $filtro
+					ORDER BY saeact.act_nom_act ";
+
+			if (!$oIfx->Query($sql_control)) {
+				throw new Exception('Error al generar el reporte de control de depreciación.');
+			}
+			if ($oIfx->NumFilas() > 0) {
+				do {
+					$clave = $oIfx->f('act_clave_act');
+					$nombre = $oIfx->f('act_nom_act');
+					$fecha_compra = $oIfx->f('act_fcmp_act');
+					$fecha_depreciacion = $oIfx->f('act_fdep_act');
+					$vida_util = intval($oIfx->f('act_vutil_act'));
+					$periodo_ultimo = intval($oIfx->f('periodo_ultimo'));
+
+					$fecha_inicio_activo = $fecha_depreciacion;
+					if (empty($fecha_inicio_activo)) {
+						$fecha_inicio_activo = $fecha_compra;
+					}
+					$inicio_activo_dt = DateTime::createFromFormat('Y-m-d', $fecha_inicio_activo);
+					if (!$inicio_activo_dt) {
+						$inicio_activo_dt = clone $periodo_fin_dt;
+					}
+
+					$vida_util_meses = $vida_util * 12;
+					$fin_vida_util_dt = clone $inicio_activo_dt;
+					$fin_vida_util_dt->modify('+' . max($vida_util_meses - 1, 0) . ' months')->modify('last day of this month');
+					$periodo_fin_vida = intval($fin_vida_util_dt->format('Y')) * 100 + intval($fin_vida_util_dt->format('m'));
+					$periodo_esperado = min($periodo_fin_form, $periodo_fin_vida);
+
+					if ($periodo_fin_form > $periodo_fin_vida) {
+						$estado_contable = 'FUERA DE VIDA ÚTIL';
+						$clase_contable = 'label label-warning';
+					} else {
+						$estado_contable = ($periodo_ultimo >= $periodo_esperado && $periodo_esperado > 0) ? 'OK' : 'PENDIENTE';
+						$clase_contable = $estado_contable === 'OK' ? 'label label-success' : 'label label-danger';
+					}
+
+					$periodo_inicio_activo = intval($inicio_activo_dt->format('Y')) * 100 + intval($inicio_activo_dt->format('m'));
+					$sql_periodos = "select cdep_ani_depr, cdep_mes_depr
+						from saecdep
+						where cdep_cod_acti = " . intval($oIfx->f('act_cod_act')) . "
+						and act_cod_empr = $empresa
+						and act_cod_sucu = " . intval($oIfx->f('act_cod_sucu')) . "
+						and ((cdep_ani_depr * 100) + cdep_mes_depr) between $periodo_inicio_activo and $periodo_fin_form";
+					$meses_depreciados = [];
+					if ($oIfxA->Query($sql_periodos)) {
+						if ($oIfxA->NumFilas() > 0) {
+							do {
+								$periodo_reg = intval($oIfxA->f('cdep_ani_depr')) * 100 + intval($oIfxA->f('cdep_mes_depr'));
+								$meses_depreciados[$periodo_reg] = true;
+							} while ($oIfxA->SiguienteRegistro());
+						}
+					}
+					$oIfxA->Free();
+
+					$periodo_iter = clone $inicio_activo_dt;
+					while ($periodo_iter <= $periodo_fin_dt) {
+						$anio_iter = intval($periodo_iter->format('Y'));
+						$mes_iter = intval($periodo_iter->format('m'));
+						$periodo_iter_num = ($anio_iter * 100) + $mes_iter;
+						if ($periodo_iter_num > $periodo_fin_form) {
+							break;
+						}
+						$motivo = '';
+						$estado = 'PENDIENTE';
+						if ($periodo_iter_num > $periodo_fin_vida) {
+							$motivo = 'FUERA DE VIDA ÚTIL';
+							$estado = 'FUERA DE VIDA ÚTIL';
+						} elseif (!isset($meses_depreciados[$periodo_iter_num])) {
+							$motivo = 'MES NO DEPRECIADO';
+						}
+
+						if (!empty($motivo)) {
+							$ctrl_reg++;
+							$html .= '<tr>'
+								. '<td>' . htmlspecialchars($clave, ENT_QUOTES, 'UTF-8') . ' - ' . htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') . '</td>'
+								. '<td align="right">' . $anio_iter . '</td>'
+								. '<td align="right">' . str_pad($mes_iter, 2, '0', STR_PAD_LEFT) . '</td>'
+								. '<td>' . $estado . '</td>'
+								. '<td>' . $motivo . '</td>'
+								. '<td><span class="' . $clase_contable . '">' . $estado_contable . '</span></td>'
+								. '</tr>';
+						}
+
+						$periodo_iter->modify('+1 month');
+					}
+				} while ($oIfx->SiguienteRegistro());
+			}
+			$oIfx->Free();
+			$html .= '</table>';
+
+			if ($ctrl_reg != 0) {
+				$_SESSION['ACT_REP_DEPR'] = $html;
+			} else {
+				$html = '<div style="font-size:14px;" ><b>..Sin Datos..<b/></div>';
+			}
+
+			$oReturn->assign("reporte", "innerHTML", $html);
+			$oReturn->alert('Proceso Terminado con Exito');
+			$oIfx->QueryT('COMMIT WORK;');
+			return $oReturn;
+		}
+
 		if ($detallado == 'S') {
+			$max_mes_encontrado = 0;
+			$periodo_filtro = ($anio_fin * 100) + $mes_fin;
 			$periodo_inicio = DateTime::createFromFormat('Y-n-j', $anio . '-' . intval($mes) . '-1');
 			$periodo_fin = DateTime::createFromFormat('Y-n-j', $anio_fin . '-' . intval($mes_fin) . '-1');
 			if (!$periodo_inicio || !$periodo_fin) {
@@ -698,6 +852,7 @@ function generar($aForm = '')
 				$sumaDeprAcumulada	  = 0;
 				$sumaValorPorDepr	  = 0;
 				// LISTA DEPRECIACION DE ACTIVOS
+				// Dep. Acum. usa SUM(cdep_val_repr) hasta el periodo seleccionado (sin recalcular).
 				$sql = " SELECT saeact.act_cod_act,   
 					 saeact.act_clave_act,   
 					 saeact.act_nom_act,   
@@ -711,13 +866,12 @@ function generar($aForm = '')
 					 saegact.gact_des_gact,   
 					 saesgac.sgac_cod_sgac,   
 					 saesgac.sgac_des_sgac,   					 
-					(select c.cdep_dep_acum 
+					(select COALESCE(SUM(c.cdep_val_repr), 0)
 					 from saecdep c 
 					 where c.cdep_cod_acti = saecdep.cdep_cod_acti
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
-					 and c.cdep_ani_depr = $anio_iter
-					 and c.cdep_mes_depr = $mes_iter) as cdep_dep_acum,
+					 and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) <= ($anio_iter * 100 + $mes_iter)) as cdep_dep_acum,
 					 sum(saecdep.cdep_gas_depn) as cdep_gas_depn, 					 
 					 max(saecdep.cdep_mes_depr) as cdep_mes_depr,
 					 DATE_PART('year', act_fiman_act ) anio,
@@ -755,16 +909,20 @@ function generar($aForm = '')
 							$vidaUtil      = $oIfx->f('act_vutil_act');
 							$anio 		   = $oIfx->f('cdep_ani_depr');
 							$mes 		   = $oIfx->f('cdep_mes_depr');
+							$periodo_encontrado = ($anio * 100) + $mes;
+							if ($periodo_encontrado > $max_mes_encontrado) {
+								$max_mes_encontrado = $periodo_encontrado;
+							}
 							$valorCompra   = $oIfx->f('act_val_comp');
 							$valorResidu   = $oIfx->f('act_vres_act');
 							$serie         = $oIfx->f('act_seri_act');
 							$grupo  	   = $oIfx->f('gact_des_gact');
 							$subgrupo 	   = $oIfx->f('sgac_des_sgac');
-							$deprAnterior  = $oIfx->f('cdep_dep_acum');
+							$deprAcumulada = $oIfx->f('cdep_dep_acum');
 							$gastoDepr     = $oIfx->f('cdep_gas_depn');
+							$deprAnterior  = max($deprAcumulada - $gastoDepr, 0);
 
 							$valorNeto     = $valorCompra - $valorResidu;
-							$deprAcumulada = $deprAnterior + $gastoDepr;
 							$valorPorDepr  = $valorCompra -  $deprAcumulada;
 
 							if ($i < 2) {
@@ -780,7 +938,7 @@ function generar($aForm = '')
 										<td>' . $fechaDepre . ' </td>
 										<td align = right>' . $vidaUtil . ' </td>
 										<td align = right>' . $anio . ' </td>
-										<td align = right>' . $mes . ' </td>
+										<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 										<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -812,7 +970,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' </td>
+												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -831,7 +989,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' </td>
+												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -863,7 +1021,7 @@ function generar($aForm = '')
 											<td>' . $fechaDepre . ' </td>
 											<td align = right>' . $vidaUtil . ' </td>
 											<td align = right>' . $anio . ' </td>
-											<td align = right>' . $mes . ' </td>
+											<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 											<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -929,11 +1087,18 @@ function generar($aForm = '')
 				$oIfx->Free();
 				$periodo_actual->modify('+1 month');
 			} //CIERRE WHILE MES
+			if ($max_mes_encontrado > 0 && $periodo_filtro > $max_mes_encontrado) {
+				$mostrar_aviso_mes = true;
+			}
+			if ($mostrar_aviso_mes) {
+				$aviso_mes_html = '<div class="text-info"><em>Si el mes seleccionado aún no ha sido depreciado, el sistema mostrará el último mes disponible del activo.</em></div>';
+			}
 
 		} //CIERRE IF DETALLADO
 
 		else {
 			// LISTA DEPRECIACION DE ACTIVOS
+			// Dep. Acum. usa SUM(cdep_val_repr) hasta el periodo seleccionado (sin recalcular).
 			$sql = " SELECT saeact.act_cod_act,   
 					 saeact.act_clave_act,   
 					 saeact.act_nom_act,   
@@ -947,13 +1112,12 @@ function generar($aForm = '')
 					 saegact.gact_des_gact,   
 					 saesgac.sgac_cod_sgac,   
 					 saesgac.sgac_des_sgac,   					 
-					(select c.cdep_dep_acum 
+					(select COALESCE(SUM(c.cdep_val_repr), 0)
 					 from saecdep c 
 					 where c.cdep_cod_acti = saecdep.cdep_cod_acti
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
-					 and c.cdep_ani_depr = $anio
-					 and c.cdep_mes_depr = $mes_fin) as cdep_dep_acum,
+					 and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) <= ($anio_fin * 100 + $mes_fin)) as cdep_dep_acum,
 					 MIN(saecdep.cdep_gas_depn) as cdep_gas_depn, 					 
 					 max(saecdep.cdep_mes_depr) as cdep_mes_depr,
 					 DATE_PART('year', act_fiman_act ) anio,
@@ -992,15 +1156,17 @@ function generar($aForm = '')
 						$vidaUtil      = $oIfx->f('act_vutil_act');
 						$anio 		   = $oIfx->f('cdep_ani_depr');
 						$mes 		   = $oIfx->f('cdep_mes_depr');
+						if ((($anio_fin * 100) + $mes_fin) > (($anio * 100) + $mes)) {
+							$mostrar_aviso_mes = true;
+						}
 						$valorCompra   = $oIfx->f('act_val_comp');
 						$valorResidu   = $oIfx->f('act_vres_act');
 						$serie         = $oIfx->f('act_seri_act');
 						$grupo  	   = $oIfx->f('gact_des_gact');
 						$subgrupo 	   = $oIfx->f('sgac_des_sgac');
-						//$deprAnterior  = $oIfx->f('cdep_dep_acum');
 						$gastoDepr     = $oIfx->f('cdep_gas_depn');
-						$deprAnterior     = $oIfx->f('cdep_val_rep1')?:0;
-						$deprAcumulada     = $oIfx->f('cdep_dep_acum');
+						$deprAcumulada = $oIfx->f('cdep_dep_acum');
+						$deprAnterior  = max($deprAcumulada - $gastoDepr, 0);
 
 
 
@@ -1020,7 +1186,7 @@ function generar($aForm = '')
 										<td>' . $fechaDepre . ' </td>
 										<td align = right>' . $vidaUtil . ' </td>
 										<td align = right>' . $anio . ' </td>
-										<td align = right>' . $mes . ' </td>
+										<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 										<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1052,7 +1218,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' </td>
+												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1071,7 +1237,7 @@ function generar($aForm = '')
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
 												<td align = right>' . $anio . ' </td>
-												<td align = right>' . $mes . ' </td>
+												<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1103,7 +1269,7 @@ function generar($aForm = '')
 											<td>' . $fechaDepre . ' </td>
 											<td align = right>' . $vidaUtil . ' </td>
 											<td align = right>' . $anio . ' </td>
-											<td align = right>' . $mes . ' </td>
+											<td align = right>' . $mes . ' <span class="badge badge-info">Mes real depreciado</span></td>
 											<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
@@ -1167,12 +1333,18 @@ function generar($aForm = '')
 				}
 			}
 			$oIfx->Free();
+			if ($mostrar_aviso_mes) {
+				$aviso_mes_html = '<div class="text-info"><em>Si el mes seleccionado aún no ha sido depreciado, el sistema mostrará el último mes disponible del activo.</em></div>';
+			}
 		} //CIERRE ELSE
 
 
 		$html .= '</table>';
 
 		if ($ctrl_reg != 0) {
+			if (!empty($aviso_mes_html)) {
+				$html = $aviso_mes_html . $html;
+			}
 			$_SESSION['ACT_REP_DEPR'] = $html;
 		} else {
 			$html = '<div style="font-size:14px;" ><b>..Sin Datos..<b/></div>';
@@ -1184,7 +1356,8 @@ function generar($aForm = '')
 		$oIfx->QueryT('COMMIT WORK;');
 	} catch (Exception $e) {
 		$oCon->QueryT('ROLLBACK');
-		$oReturn->alert($e->getMessage());
+		error_log('Reporte depreciación: ' . $e->getMessage());
+		$oReturn->alert('Error al generar el reporte de depreciación. Revise la configuración del activo.');
 	}
 	return $oReturn;
 }
