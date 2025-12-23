@@ -579,6 +579,8 @@ function generar($aForm = '')
                     if ($intervalo === 'M') {
                         $vida_util_meses = intval($vida_util) * 12;
                     }
+                    $valor_neto = floatval($valor_compra) - floatval($valor_recidual);
+                    $depreciacion_mensual = $vida_util_meses > 0 ? round($valor_neto / $vida_util_meses, 2) : 0;
                     $fin_vida_util_dt = clone $inicio_activo_dt;
                     $fin_vida_util_dt->modify('+' . max($vida_util_meses - 1, 0) . ' months')->modify('last day of this month');
                     if ($fin_activo_dt && $fin_activo_dt < $fin_vida_util_dt) {
@@ -650,15 +652,28 @@ function generar($aForm = '')
                                     $valor_anterior = $valor_acumulado - $valor_mesual;
                                 }
 
-                                $sql_cdep = "INSERT into saecdep (cdep_cod_acti, cdep_cod_tdep,     cdep_mes_depr, cdep_ani_depr, 
+                                if ($vida_util_meses <= 0) {
+                                    $estado = 'OMITIDO';
+                                    $motivo = 'VIDA UTIL INVALIDA';
+                                } elseif ($depreciacion_mensual <= 0) {
+                                    $estado = 'OMITIDO';
+                                    $motivo = 'DEPRECIACION MENSUAL INVALIDA';
+                                } elseif ($valor_acumulado >= $valor_neto || ($valor_acumulado + $depreciacion_mensual) > $valor_neto) {
+                                    $estado = 'OMITIDO';
+                                    $motivo = 'VALOR RESIDUAL ALCANZADO';
+                                } else {
+                                    $sql_cdep = "INSERT into saecdep (cdep_cod_acti, cdep_cod_tdep,     cdep_mes_depr, cdep_ani_depr, 
                                                      cdep_fec_depr, act_cod_empr,       act_cod_sucu,  cdep_dep_acum, 
-                                                     cdep_gas_depn, cdep_est_cdep,      cdep_fec_cdep, cdep_val_rep1 )
+                                                     cdep_gas_depn, cdep_est_cdep,      cdep_fec_cdep, cdep_val_rep1,
+                                                     cdep_val_repr )
 					                        values ($codigo_activo, '$tipo_depreciacion', $mes_iter,           $anio_iter, 
                                                     '$fecha_hasta',  $empresa,            $sucursal,      $valor_acumulado , 
-                                                    $valor_mesual,      'PE',           '$fechaServer',    $valor_anterior)";
-                                $oIfx->QueryT($sql_cdep);
-                                $estado = 'PROCESADO';
-                                $motivo = 'DEPRECIADO';
+                                                    $valor_mesual,      'PE',           '$fechaServer',    $valor_anterior,
+                                                    $depreciacion_mensual)";
+                                    $oIfx->QueryT($sql_cdep);
+                                    $estado = 'PROCESADO';
+                                    $motivo = 'DEPRECIADO';
+                                }
                             }
                         }
 
