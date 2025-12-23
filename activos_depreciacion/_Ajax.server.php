@@ -144,14 +144,19 @@ function f_filtro_activos_desde($aForm)
     $idempresa = $_SESSION['U_EMPRESA'];
     $idsucursal = $_SESSION['U_SUCURSAL'];
     //variables formulario
-    $empresa = $aForm['empresa'];
-    $sucursal = $aForm['sucursal'];
-    $subgrupo = $aForm['cod_subgrupo'];
+    $empresa = $aForm['empresa'] ?? '';
+    $sucursal = $aForm['sucursal'] ?? '';
+    $subgrupo = $aForm['cod_subgrupo'] ?? '';
     if (empty($empresa)) {
         $empresa = $idempresa;
     }
     if (empty($sucursal)) {
         $sucursal = $idsucursal;
+    }
+    error_log("f_filtro_activos_desde params: empresa={$empresa}, sucursal={$sucursal}, subgrupo={$subgrupo}");
+    if (empty($empresa) || empty($sucursal) || empty($subgrupo)) {
+        $oReturn->alert('Debe seleccionar empresa, sucursal y subgrupo para listar activos.');
+        return $oReturn;
     }
     // DATOS DEL ACTIVO
     $sql = "select act_cod_act, act_nom_act, act_clave_act
@@ -195,14 +200,19 @@ function f_filtro_activos_hasta($aForm)
     $idempresa = $_SESSION['U_EMPRESA'];
     $idsucursal = $_SESSION['U_SUCURSAL'];
     //variables formulario
-    $empresa = $aForm['empresa'];
-    $sucursal = $aForm['sucursal'];
-    $subgrupo = $aForm['cod_subgrupo'];
+    $empresa = $aForm['empresa'] ?? '';
+    $sucursal = $aForm['sucursal'] ?? '';
+    $subgrupo = $aForm['cod_subgrupo'] ?? '';
     if (empty($empresa)) {
         $empresa = $idempresa;
     }
     if (empty($sucursal)) {
         $sucursal = $idsucursal;
+    }
+    error_log("f_filtro_activos_hasta params: empresa={$empresa}, sucursal={$sucursal}, subgrupo={$subgrupo}");
+    if (empty($empresa) || empty($sucursal) || empty($subgrupo)) {
+        $oReturn->alert('Debe seleccionar empresa, sucursal y subgrupo para listar activos.');
+        return $oReturn;
     }
     // DATOS DEL ACTIVO
     $sql = "select act_cod_act, act_nom_act, act_clave_act
