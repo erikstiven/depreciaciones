@@ -18,6 +18,8 @@
     <!--Javascript--> 
 
     <style>
+        /* El recorte ocurría porque .modal (overlay bootstrap) es fixed + overflow hidden
+           y el panel no tenía altura definida; el contenido crecía y quedaba fuera del overlay. */
         #modalResumenDepre.modal-overlay {
             position: fixed;
             inset: 0;
@@ -25,6 +27,7 @@
             overflow: hidden;
         }
 
+        /* El panel limita la altura a 90vh y fuerza el scroll interno (no en el overlay). */
         #modalResumenDepre .modal-resumen {
             position: fixed;
             top: 50%;
@@ -32,11 +35,13 @@
             transform: translate(-50%, -50%);
             width: 90%;
             max-width: 1200px;
+            height: 90vh;
             max-height: 90vh;
             display: flex;
             flex-direction: column;
             background: #fff;
             border-radius: 4px;
+            overflow: hidden;
         }
 
         #modalResumenDepre .modal-header,
