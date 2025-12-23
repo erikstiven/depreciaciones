@@ -18,29 +18,26 @@
     <!--Javascript--> 
 
     <style>
-        /* El recorte ocurría porque .modal (overlay bootstrap) es fixed + overflow hidden
-           y el panel no tenía altura definida; el contenido crecía y quedaba fuera del overlay. */
-        #modalResumenDepre.modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
+        /* Causa del recorte: bootstrap-3.3.7-dist/css/bootstrap.css define
+           .modal { position: fixed; overflow: hidden; }, y el diálogo crecía
+           sin altura límite, por lo que el cuerpo quedaba fuera del overlay. */
+        #modalResumenDepre {
             overflow: hidden;
         }
 
-        /* El panel limita la altura a 90vh y fuerza el scroll interno (no en el overlay). */
-        #modalResumenDepre .modal-resumen {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        /* El diálogo usa 90vh para forzar scroll interno sin tocar otros modales. */
+        #modalResumenDepre .modal-dialog {
             width: 90%;
             max-width: 1200px;
             height: 90vh;
             max-height: 90vh;
+            margin: 5vh auto;
+        }
+
+        #modalResumenDepre .modal-content {
+            height: 100%;
             display: flex;
             flex-direction: column;
-            background: #fff;
-            border-radius: 4px;
             overflow: hidden;
         }
 
@@ -504,19 +501,21 @@
                 </div>
             </form>
         </div>
-        <div id="modalResumenDepre" class="modal fade modal-overlay" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
-            <div class="modal-resumen">
-                <div class="modal-header">
-                    <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <h4 class="modal-title">Resumen de Ejecución</h4>
-                </div>
-                <div class="modal-body-scroll">
-                    <div id="divResumenDepreciacion"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
+        <div id="modalResumenDepre" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title">Resumen de Ejecución</h4>
+                    </div>
+                    <div class="modal-body modal-body-scroll">
+                        <div id="divResumenDepreciacion"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
+                    </div>
                 </div>
             </div>
         </div>
