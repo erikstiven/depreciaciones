@@ -201,22 +201,6 @@
             }
         }
 
-        function irReporteDepreciacion() {
-            var empresa = document.getElementById("empresa").value;
-            var sucursal = document.getElementById("sucursal").value;
-            var anioDesde = document.getElementById("anio_desde").value;
-            var mesDesde = document.getElementById("mes_desde").value;
-            var anioHasta = document.getElementById("anio_hasta").value;
-            var mesHasta = document.getElementById("mes_hasta").value;
-            var url = "../activos_rep_depreciacion/activos_rep_depre.php"
-                + "?empresa=" + encodeURIComponent(empresa)
-                + "&sucursal=" + encodeURIComponent(sucursal)
-                + "&anio_desde=" + encodeURIComponent(anioDesde)
-                + "&mes_desde=" + encodeURIComponent(mesDesde)
-                + "&anio_hasta=" + encodeURIComponent(anioHasta)
-                + "&mes_hasta=" + encodeURIComponent(mesHasta);
-            window.open(url, "_blank");
-        }
 		function f_filtro_grupo(data){
             xajax_f_filtro_grupo(xajax.getFormValues("form1"), data);           
         }
@@ -490,7 +474,6 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
-                        <button type="button" class="btn btn-primary" onclick="irReporteDepreciacion();">Ir a Reporte de Depreciación</button>
                     </div>
                 </div>
             </div>
