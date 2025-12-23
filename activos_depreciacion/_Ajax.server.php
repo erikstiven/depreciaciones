@@ -154,26 +154,31 @@ function f_filtro_activos_desde($aForm)
         $sucursal = $idsucursal;
     }
     error_log("f_filtro_activos_desde params: empresa={$empresa}, sucursal={$sucursal}, subgrupo={$subgrupo}");
+    $oReturn->script('eliminar_lista_activo_desde();');
     if (empty($empresa) || empty($sucursal) || empty($subgrupo)) {
         $oReturn->alert('Debe seleccionar empresa, sucursal y subgrupo para listar activos.');
         return $oReturn;
     }
-    // DATOS DEL ACTIVO
-    $sql = "select act_cod_act, act_nom_act, act_clave_act
+    try {
+        // DATOS DEL ACTIVO
+        $sql = "select act_cod_act, act_nom_act, act_clave_act
 			from saeact
 			where act_cod_empr = '$empresa'
 			and act_cod_sucu = '$sucursal'
 			and sgac_cod_sgac  = '$subgrupo'
 			order by act_cod_act";
-    //echo $sql; exit;
-    $i = 1;
-    if ($oIfx->Query($sql)) {
-        $oReturn->script('eliminar_lista_activo_desde();');
+        $i = 1;
+        if (!$oIfx->Query($sql)) {
+            throw new Exception('Error al ejecutar consulta de activos.');
+        }
         if ($oIfx->NumFilas() > 0) {
             do {
                 $oReturn->script(('anadir_elemento_activo_desde(' . $i++ . ',\'' . $oIfx->f('act_cod_act') . '\', \'' . $oIfx->f('act_clave_act') . ' - ' . $oIfx->f('act_nom_act') . '\' )'));
             } while ($oIfx->SiguienteRegistro());
         }
+    } catch (Exception $e) {
+        error_log('f_filtro_activos_desde error: ' . $e->getMessage());
+        $oReturn->alert('Error al cargar activos. Intente nuevamente.');
     }
     return $oReturn;
 }
@@ -210,26 +215,31 @@ function f_filtro_activos_hasta($aForm)
         $sucursal = $idsucursal;
     }
     error_log("f_filtro_activos_hasta params: empresa={$empresa}, sucursal={$sucursal}, subgrupo={$subgrupo}");
+    $oReturn->script('eliminar_lista_activo_hasta();');
     if (empty($empresa) || empty($sucursal) || empty($subgrupo)) {
         $oReturn->alert('Debe seleccionar empresa, sucursal y subgrupo para listar activos.');
         return $oReturn;
     }
-    // DATOS DEL ACTIVO
-    $sql = "select act_cod_act, act_nom_act, act_clave_act
+    try {
+        // DATOS DEL ACTIVO
+        $sql = "select act_cod_act, act_nom_act, act_clave_act
 			from saeact
 			where act_cod_empr = '$empresa'
 			and act_cod_sucu = '$sucursal'
 			and sgac_cod_sgac  = '$subgrupo'
 			order by act_cod_act";
-    //echo $sql; exit;
-    $i = 1;
-    if ($oIfx->Query($sql)) {
-        $oReturn->script('eliminar_lista_activo_hasta();');
+        $i = 1;
+        if (!$oIfx->Query($sql)) {
+            throw new Exception('Error al ejecutar consulta de activos.');
+        }
         if ($oIfx->NumFilas() > 0) {
             do {
                 $oReturn->script(('anadir_elemento_activo_hasta(' . $i++ . ',\'' . $oIfx->f('act_cod_act') . '\', \'' . $oIfx->f('act_clave_act') . ' - ' . $oIfx->f('act_nom_act') . '\' )'));
             } while ($oIfx->SiguienteRegistro());
         }
+    } catch (Exception $e) {
+        error_log('f_filtro_activos_hasta error: ' . $e->getMessage());
+        $oReturn->alert('Error al cargar activos. Intente nuevamente.');
     }
     //$oReturn->assign('cod_activo_hasta', 'value', $data);
     return $oReturn;
