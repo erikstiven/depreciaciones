@@ -580,7 +580,21 @@ function generar($aForm = '')
                         $vida_util_meses = intval($vida_util) * 12;
                     }
                     $valor_neto = floatval($valor_compra) - floatval($valor_recidual);
-                    $depreciacion_mensual = $vida_util_meses > 0 ? round($valor_neto / $vida_util_meses, 2) : 0;
+                    $depreciacion_mensual = 0;
+                    $depreciacion_valida = false;
+                    // Calcular depreciación mensual en línea recta con validaciones obligatorias.
+                    try {
+                        if ($vida_util_meses <= 0) {
+                            throw new Exception('Vida útil inválida para depreciación.');
+                        }
+                        $depreciacion_mensual = round($valor_neto / $vida_util_meses, 2);
+                        if ($depreciacion_mensual <= 0) {
+                            throw new Exception('Depreciación mensual inválida.');
+                        }
+                        $depreciacion_valida = true;
+                    } catch (Exception $e) {
+                        error_log("Depreciación masiva: activo {$codigo_activo} sin cálculo válido. " . $e->getMessage());
+                    }
                     $fin_vida_util_dt = clone $inicio_activo_dt;
                     $fin_vida_util_dt->modify('+' . max($vida_util_meses - 1, 0) . ' months')->modify('last day of this month');
                     if ($fin_activo_dt && $fin_activo_dt < $fin_vida_util_dt) {
@@ -652,12 +666,9 @@ function generar($aForm = '')
                                     $valor_anterior = $valor_acumulado - $valor_mesual;
                                 }
 
-                                if ($vida_util_meses <= 0) {
+                                if (!$depreciacion_valida) {
                                     $estado = 'OMITIDO';
-                                    $motivo = 'VIDA UTIL INVALIDA';
-                                } elseif ($depreciacion_mensual <= 0) {
-                                    $estado = 'OMITIDO';
-                                    $motivo = 'DEPRECIACION MENSUAL INVALIDA';
+                                    $motivo = 'DEPRECIACION NO CALCULADA';
                                 } elseif ($valor_acumulado >= $valor_neto || ($valor_acumulado + $depreciacion_mensual) > $valor_neto) {
                                     $estado = 'OMITIDO';
                                     $motivo = 'VALOR RESIDUAL ALCANZADO';
