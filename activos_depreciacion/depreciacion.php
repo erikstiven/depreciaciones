@@ -6,7 +6,6 @@
     <? /*     * ***************************************************************** */ ?>
     	
     <!--CSS--> 
-	<link rel="stylesheet" type="text/css" href="<?=$_COOKIE["JIREH_INCLUDE"]?>css/bootstrap-3.3.7-dist/css/bootstrap.css" media="screen">
 	<link rel="stylesheet" type="text/css" href="<?=$_COOKIE["JIREH_INCLUDE"]?>css/bootstrap-3.3.7-dist/css/bootstrap.min.css" media="screen">
 	<link rel="stylesheet" type="text/css" href="<?=$_COOKIE["JIREH_INCLUDE"]?>js/treeview/css/bootstrap-treeview.css" media="screen"> 
 	
@@ -16,6 +15,59 @@
     <!-- Theme style -->
     <link rel="stylesheet" href="<?=$_COOKIE["JIREH_COMPONENTES"]?>dist/css/AdminLTE.min.css">
     <!--Javascript--> 
+
+    <style>
+        /* Causa del recorte: bootstrap-3.3.7-dist/css/bootstrap.min.css define
+           .modal { position: fixed; overflow: hidden; }, y el diálogo crecía
+           sin altura límite, por lo que el cuerpo quedaba fuera del overlay. */
+        /* El diálogo usa 80vh para forzar scroll interno sin tocar otros modales. */
+        #modalResumenDepre .modal-dialog {
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
+            max-height: 80vh;
+            margin: 10vh auto;
+        }
+
+        #modalResumenDepre .modal-content {
+            height: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #modalResumenDepre .modal-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            max-height: none !important;
+            overflow: hidden !important;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        #modalResumenDepre .modal-resumen-alertas {
+            height: 160px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        #modalResumenDepre .modal-resumen-alertas .alert {
+            margin: 0;
+        }
+
+        #modalResumenDepre .modal-resumen-tabla {
+            height: 45vh;
+            max-height: 45vh;
+            overflow-y: auto;
+        }
+
+        #modalResumenDepre .modal-body table {
+            width: 100%;
+        }
+    </style>
     
   
     <script src="<?=$_COOKIE["JIREH_INCLUDE"]?>js/dataTables/jquery.dataTables.min.js"></script>
@@ -172,33 +224,6 @@
             boton.classList.remove("disabled");
             boton.setAttribute("data-disabled", "false");
             return true;
-        }
-
-        function mostrarResumenDepreciacion() {
-            var modal = document.getElementById("modalResumenDepre");
-            if (!modal) {
-                return;
-            }
-            modal.style.display = "block";
-            modal.classList.add("in");
-            modal.setAttribute("aria-hidden", "false");
-            var backdrop = document.createElement("div");
-            backdrop.className = "modal-backdrop fade in";
-            backdrop.id = "modalResumenDepreBackdrop";
-            document.body.appendChild(backdrop);
-        }
-
-        function cerrarResumenDepreciacion() {
-            var modal = document.getElementById("modalResumenDepre");
-            if (modal) {
-                modal.style.display = "none";
-                modal.classList.remove("in");
-                modal.setAttribute("aria-hidden", "true");
-            }
-            var backdrop = document.getElementById("modalResumenDepreBackdrop");
-            if (backdrop && backdrop.parentNode) {
-                backdrop.parentNode.removeChild(backdrop);
-            }
         }
 
 		function f_filtro_grupo(data){
@@ -460,20 +485,20 @@
                 </div>
             </form>
         </div>
-        <div id="modalResumenDepre" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content" style="max-height: 90vh;">
+        <div id="modalResumenDepre" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                         <h4 class="modal-title">Resumen de Ejecución</h4>
                     </div>
-                    <div class="modal-body" style="max-height: calc(90vh - 140px); overflow-y: auto;">
+                    <div class="modal-body">
                         <div id="divResumenDepreciacion"></div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
                     </div>
                 </div>
             </div>
