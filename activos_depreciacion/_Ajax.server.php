@@ -147,16 +147,17 @@ function f_filtro_activos_desde($aForm)
     $empresa = $aForm['empresa'] ?? '';
     $sucursal = $aForm['sucursal'] ?? '';
     $subgrupo = $aForm['cod_subgrupo'] ?? '';
+    if ($subgrupo === '0') {
+        $subgrupo = '';
+    }
     if (empty($empresa)) {
         $empresa = $idempresa;
     }
     if (empty($sucursal)) {
         $sucursal = $idsucursal;
     }
-    error_log("f_filtro_activos_desde params: empresa={$empresa}, sucursal={$sucursal}, subgrupo={$subgrupo}");
     $oReturn->script('eliminar_lista_activo_desde();');
     if (empty($empresa) || empty($sucursal) || empty($subgrupo)) {
-        $oReturn->alert('Debe seleccionar empresa, sucursal y subgrupo para listar activos.');
         return $oReturn;
     }
     try {
@@ -178,7 +179,6 @@ function f_filtro_activos_desde($aForm)
         }
     } catch (Exception $e) {
         error_log('f_filtro_activos_desde error: ' . $e->getMessage());
-        $oReturn->alert('Error al cargar activos. Intente nuevamente.');
     }
     return $oReturn;
 }
@@ -208,16 +208,17 @@ function f_filtro_activos_hasta($aForm)
     $empresa = $aForm['empresa'] ?? '';
     $sucursal = $aForm['sucursal'] ?? '';
     $subgrupo = $aForm['cod_subgrupo'] ?? '';
+    if ($subgrupo === '0') {
+        $subgrupo = '';
+    }
     if (empty($empresa)) {
         $empresa = $idempresa;
     }
     if (empty($sucursal)) {
         $sucursal = $idsucursal;
     }
-    error_log("f_filtro_activos_hasta params: empresa={$empresa}, sucursal={$sucursal}, subgrupo={$subgrupo}");
     $oReturn->script('eliminar_lista_activo_hasta();');
     if (empty($empresa) || empty($sucursal) || empty($subgrupo)) {
-        $oReturn->alert('Debe seleccionar empresa, sucursal y subgrupo para listar activos.');
         return $oReturn;
     }
     try {
@@ -239,7 +240,6 @@ function f_filtro_activos_hasta($aForm)
         }
     } catch (Exception $e) {
         error_log('f_filtro_activos_hasta error: ' . $e->getMessage());
-        $oReturn->alert('Error al cargar activos. Intente nuevamente.');
     }
     //$oReturn->assign('cod_activo_hasta', 'value', $data);
     return $oReturn;
@@ -399,12 +399,14 @@ function f_filtro_subgrupo($aForm = '')
     //variables formulario
     $empresa = $aForm['empresa'] ?? '';
     $codigoGrupo = $aForm['cod_grupo'] ?? '';
+    if ($codigoGrupo === '0') {
+        $codigoGrupo = '';
+    }
     if (empty($empresa)) {
         $empresa = $idempresa;
     }
     if (empty($empresa) || empty($codigoGrupo)) {
         error_log("f_filtro_subgrupo params missing: empresa={$empresa}, cod_grupo={$codigoGrupo}");
-        $oReturn->alert('Debe seleccionar empresa y grupo para listar subgrupos.');
         $oReturn->script('eliminar_lista_subgrupo();');
         $oReturn->script('eliminar_lista_activo_desde();');
         $oReturn->script('eliminar_lista_activo_hasta();');
@@ -432,7 +434,6 @@ function f_filtro_subgrupo($aForm = '')
         }
     } catch (Exception $e) {
         error_log('f_filtro_subgrupo error: ' . $e->getMessage());
-        $oReturn->alert('Error al cargar subgrupos. Intente nuevamente.');
         return $oReturn;
     }
     return $oReturn;
