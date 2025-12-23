@@ -41,7 +41,9 @@
             display: flex;
             flex-direction: column;
             flex: 1 1 auto;
-            overflow: hidden;
+            min-height: 0;
+            max-height: none !important;
+            overflow: hidden !important;
             padding: 10px;
             gap: 10px;
         }
