@@ -773,7 +773,7 @@ function generar($aForm = '')
                     . '</div>';
 
                 $oReturn->assign('divResumenDepreciacion', 'innerHTML', $resumen_html);
-                $oReturn->script('mostrarResumenDepreciacion();');
+                $oReturn->script("$('#modalResumenDepre').modal('show');");
             } else {
                 $resumen_html = '<div class="row">'
                     . '<div class="col-md-12">'
@@ -798,7 +798,7 @@ function generar($aForm = '')
                     . '</div>';
 
                 $oReturn->assign('divResumenDepreciacion', 'innerHTML', $resumen_html);
-                $oReturn->script('mostrarResumenDepreciacion();');
+                $oReturn->script("$('#modalResumenDepre').modal('show');");
             }
         }
     } catch (Exception $e) {
