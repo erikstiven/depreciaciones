@@ -47,12 +47,18 @@
         }
 
         #modalResumenDepre .modal-resumen-alertas {
-            height: 15vh;
+            height: 160px;
+            max-height: 160px;
             overflow-y: auto;
+        }
+
+        #modalResumenDepre .modal-resumen-alertas .alert {
+            margin: 0;
         }
 
         #modalResumenDepre .modal-resumen-tabla {
             height: 45vh;
+            max-height: 45vh;
             overflow-y: auto;
         }
 
