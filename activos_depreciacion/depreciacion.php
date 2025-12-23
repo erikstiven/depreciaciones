@@ -201,22 +201,6 @@
             }
         }
 
-        function irReporteDepreciacion() {
-            var empresa = document.getElementById("empresa").value;
-            var sucursal = document.getElementById("sucursal").value;
-            var anioDesde = document.getElementById("anio_desde").value;
-            var mesDesde = document.getElementById("mes_desde").value;
-            var anioHasta = document.getElementById("anio_hasta").value;
-            var mesHasta = document.getElementById("mes_hasta").value;
-            var url = "../activos_rep_depreciacion/activos_rep_depre.php"
-                + "?empresa=" + encodeURIComponent(empresa)
-                + "&sucursal=" + encodeURIComponent(sucursal)
-                + "&anio_desde=" + encodeURIComponent(anioDesde)
-                + "&mes_desde=" + encodeURIComponent(mesDesde)
-                + "&anio_hasta=" + encodeURIComponent(anioHasta)
-                + "&mes_hasta=" + encodeURIComponent(mesHasta);
-            window.open(url, "_blank");
-        }
 		function f_filtro_grupo(data){
             xajax_f_filtro_grupo(xajax.getFormValues("form1"), data);           
         }
@@ -478,19 +462,18 @@
         </div>
         <div id="modalResumenDepre" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
             <div class="modal-dialog modal-lg">
-                <div class="modal-content">
+                <div class="modal-content" style="max-height: 90vh;">
                     <div class="modal-header">
                         <button type="button" class="close" onclick="cerrarResumenDepreciacion();" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                         <h4 class="modal-title">Resumen de Ejecución</h4>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" style="max-height: calc(90vh - 140px); overflow-y: auto;">
                         <div id="divResumenDepreciacion"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" onclick="cerrarResumenDepreciacion();">Cerrar</button>
-                        <button type="button" class="btn btn-primary" onclick="irReporteDepreciacion();">Ir a Reporte de Depreciación</button>
                     </div>
                 </div>
             </div>
