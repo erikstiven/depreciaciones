@@ -743,7 +743,7 @@ function generar($aForm = '')
 
                 $alerta_html = '';
                 if (!empty($alertas_pendientes)) {
-                    $alerta_html = '<div class="alert alert-info" style="margin-top: 10px;">'
+                    $alerta_html = '<div class="alert alert-info">'
                         . '<strong>Alertas de control:</strong><ul><li>'
                         . implode('</li><li>', array_map('htmlspecialchars', $alertas_pendientes))
                         . '</li></ul></div>';
@@ -756,8 +756,10 @@ function generar($aForm = '')
                     . '<p><strong>Omitidos:</strong> ' . $total_omitidos . '</p>'
                     . '</div>'
                     . '</div>'
+                    . '<div class="modal-resumen-alertas">'
                     . $alerta_html
-                    . '<div class="table-responsive" style="max-height: 300px; overflow: auto;">'
+                    . '</div>'
+                    . '<div class="modal-resumen-tabla">'
                     . '<table class="table table-bordered table-condensed">'
                     . '<thead><tr>'
                     . '<th>Activo</th>'
@@ -782,7 +784,8 @@ function generar($aForm = '')
                     . '<p><strong>Omitidos:</strong> 0</p>'
                     . '</div>'
                     . '</div>'
-                    . '<div class="table-responsive" style="max-height: 300px; overflow: auto;">'
+                    . '<div class="modal-resumen-alertas"></div>'
+                    . '<div class="modal-resumen-tabla">'
                     . '<table class="table table-bordered table-condensed">'
                     . '<thead><tr>'
                     . '<th>Activo</th>'

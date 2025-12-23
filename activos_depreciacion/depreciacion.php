@@ -32,11 +32,28 @@
         #modalResumenDepre .modal-content {
             height: 100%;
             max-height: 80vh;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         #modalResumenDepre .modal-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            overflow: hidden;
             padding: 10px;
+            gap: 10px;
+        }
+
+        #modalResumenDepre .modal-resumen-alertas {
+            height: 15vh;
+            overflow-y: auto;
+        }
+
+        #modalResumenDepre .modal-resumen-tabla {
+            height: 45vh;
+            overflow-y: auto;
         }
 
         #modalResumenDepre .modal-body table {
