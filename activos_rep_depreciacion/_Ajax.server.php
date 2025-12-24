@@ -68,90 +68,112 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 			$ifu->AgregarCampoListaSQL('cod_activo_hasta', 'Activo Hasta|left', "", false, 150, 150);
 	}
 
-	$table_op .= '<table class="table table-striped table-condensed" style="width: 70%; margin-bottom: 0px;" >
-		<tr> 
-                    <td colspan="8" align="center" class="bg-primary">REPORTE DEPRECIACION DE ACTIVOS</td>
-		</tr>
-                <tr>
-                    <td colspan = "8">    
-                        <div class="btn-group">
-						<div class="btn btn-primary btn-sm" onclick="genera_cabecera_formulario();" >
-                                    <span class="glyphicon glyphicon-file"></span>
-                                    Nuevo
-                            </div>
-                            <div class="btn btn-primary btn-sm" onclick="generar();" id = "generar">
-                                    <span class="glyphicon glyphicon-search"></span>
-                                    Consultar
-                            </div>
-                            <div class="btn btn-primary btn-sm" onclick="f_exportar();" id = "exportar">
-                                    <span class="glyphicon glyphicon-cog"></span>
-                                    Excel
-                            </div>							
-                        </div>
-                    </td>                   
-                </tr>
-                <tr class="msgFrm">
-                    <td colspan="8" align="center">Los campos con * son de ingreso obligatorio</td>
-                </tr>
-				<tr>
-                    <td>' . $ifu->ObjetoHtmlLBL('empresa') . '</td>
-                    <td>' . $ifu->ObjetoHtml('empresa') . '</td>
-                    <td>' . $ifu->ObjetoHtmlLBL('sucursal') . '</td>
-                    <td>' . $ifu->ObjetoHtml('sucursal') . '</td>
-					<td>
-						<label for="tipo">Activos Revalorizados</label>
-					</td>	
-					<td>
-						<input type="checkbox" name="tipo" id="tipo" value="S">							
-					</td>
-					<td>
-						<label for="tipo">Detallado</label>
-					</td>	
-					<td>
-						<input type="checkbox" name="detallado" id="detallado" value="S">							
-					</td>
-					<td>
-						<label for="control_depreciacion">Control de Depreciaci&oacute;n</label>
-					</td>
-					<td>
-						<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
-					</td>
-					<td>
-						<label for="foto_mes_contable">Foto del mes contable</label>
-						<span class="glyphicon glyphicon-question-sign"
-							title="Muestra una foto contable del activo al mes seleccionado.
+	$table_op .= '<div class="panel panel-primary" style="margin-bottom: 10px;">
+			<div class="panel-heading text-center">REPORTE DEPRECIACION DE ACTIVOS</div>
+			<div class="panel-body">
+				<div class="row" style="margin-bottom: 10px;">
+					<div class="col-md-12 text-center">
+						<div class="btn-group">
+							<div class="btn btn-primary btn-sm" onclick="genera_cabecera_formulario();" >
+									<span class="glyphicon glyphicon-file"></span>
+									Nuevo
+							</div>
+							<div class="btn btn-primary btn-sm" onclick="generar();" id = "generar">
+									<span class="glyphicon glyphicon-search"></span>
+									Consultar
+							</div>
+							<div class="btn btn-primary btn-sm" onclick="f_exportar();" id = "exportar">
+									<span class="glyphicon glyphicon-cog"></span>
+									Excel
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row msgFrm" style="margin-bottom: 15px;">
+					<div class="col-md-12 text-center">Los campos con * son de ingreso obligatorio</div>
+				</div>
+				<div class="row">
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('empresa') . '
+						' . $ifu->ObjetoHtml('empresa') . '
+					</div>
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('sucursal') . '
+						' . $ifu->ObjetoHtml('sucursal') . '
+					</div>
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('cod_grupo') . '
+						' . $ifu->ObjetoHtml('cod_grupo') . '
+					</div>
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('cod_subgrupo') . '
+						' . $ifu->ObjetoHtml('cod_subgrupo') . '
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('anio') . '
+						' . $ifu->ObjetoHtml('anio') . '
+					</div>
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('mes') . '
+						' . $ifu->ObjetoHtml('mes') . '
+					</div>
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('anio_fin') . '
+						' . $ifu->ObjetoHtml('anio_fin') . '
+					</div>
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('mes_fin') . '
+						' . $ifu->ObjetoHtml('mes_fin') . '
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('cod_activo_desde') . '
+						' . $ifu->ObjetoHtml('cod_activo_desde') . '
+					</div>
+					<div class="col-md-3 form-group">
+						' . $ifu->ObjetoHtmlLBL('cod_activo_hasta') . '
+						' . $ifu->ObjetoHtml('cod_activo_hasta') . '
+					</div>
+				</div>
+				<div class="row" style="margin-top: 10px;">
+					<div class="col-md-12">
+						<div class="checkbox" style="display: inline-block; margin-right: 15px;">
+							<label for="tipo">
+								<input type="checkbox" name="tipo" id="tipo" value="S">
+								Activos Revalorizados
+							</label>
+						</div>
+						<div class="checkbox" style="display: inline-block; margin-right: 15px;">
+							<label for="detallado">
+								<input type="checkbox" name="detallado" id="detallado" value="S">
+								Detallado
+							</label>
+						</div>
+						<div class="checkbox" style="display: inline-block; margin-right: 15px;">
+							<label for="control_depreciacion">
+								<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
+								Control de Depreciaci&oacute;n
+							</label>
+						</div>
+						<div class="checkbox" style="display: inline-block;">
+							<label for="foto_mes_contable">
+								<input type="checkbox" name="foto_mes_contable" id="foto_mes_contable" value="S">
+								Foto del mes contable
+							</label>
+							<span class="glyphicon glyphicon-question-sign"
+								title="Muestra una foto contable del activo al mes seleccionado.
 El cálculo se realiza sin prorrateos, usando meses completos,
 redondeo contable y sin considerar el histórico de depreciaciones.
 Este modo coincide con Excel y es el utilizado para auditoría y contabilidad."></span>
-					</td>
-					<td>
-						<input type="checkbox" name="foto_mes_contable" id="foto_mes_contable" value="S">
-					</td>
-				</tr>
-				<tr>
-                    <td>' . $ifu->ObjetoHtmlLBL('anio') . '</td>
-                    <td>' . $ifu->ObjetoHtml('anio') . '</td>
-                    <td>' . $ifu->ObjetoHtmlLBL('mes') . '</td>
-                    <td>' . $ifu->ObjetoHtml('mes') . '</td>
-                    <td>' . $ifu->ObjetoHtmlLBL('anio_fin') . '</td>
-                    <td>' . $ifu->ObjetoHtml('anio_fin') . '</td>
-                    <td>' . $ifu->ObjetoHtmlLBL('mes_fin') . '</td>
-                    <td>' . $ifu->ObjetoHtml('mes_fin') . '</td>
-				</tr>
-
-				 <tr>
-                    <td>' . $ifu->ObjetoHtmlLBL('cod_grupo') . '</td>
-                    <td>' . $ifu->ObjetoHtml('cod_grupo') . '</td>
-                    <td>' . $ifu->ObjetoHtmlLBL('cod_subgrupo') . '</td>
-                    <td>' . $ifu->ObjetoHtml('cod_subgrupo') . '</td>
-					<td>' . $ifu->ObjetoHtmlLBL('cod_activo_desde') . '</td>
-                    <td>' . $ifu->ObjetoHtml('cod_activo_desde') . '</td>
-					<td>' . $ifu->ObjetoHtmlLBL('cod_activo_hasta') . '</td>
-                    <td>' . $ifu->ObjetoHtml('cod_activo_hasta') . '</td>					
-				</tr>
-                </table>				
-				<br>
-				<div id = "reporte"> </div>';
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id = "reporte"> </div>';
 	$table_op .= '</fieldset>';
 	$oReturn->assign("divFormularioReportesDepr", "innerHTML", $table_op);
 
@@ -681,7 +703,7 @@ function generar($aForm = '')
 		? '<span class="badge badge-info">Mes contable</span>'
 		: '<span class="badge badge-info">Mes real depreciado</span>';
 	$html = '';
-	$html .= '<table class="table table-striped table-hover " style="width: 100%; margin-bottom: 0px;">
+	$html .= '<table class="table table-striped table-hover " id="tablaReporteDepreciacion" style="width: 100%; margin-bottom: 0px;">
 							<tr class="msgFrm">
 								<td class="bg-primary text-center"><h5> Clave </h5></td>
 								<td class="bg-primary text-center"><h5> Nombre </h5></td>
@@ -1614,6 +1636,7 @@ function generar($aForm = '')
 
 
 		$oReturn->assign("reporte", "innerHTML", $html);
+		$oReturn->script('initDataTableReporte();');
 		$oReturn->alert('Proceso Terminado con Exito');
 		$oIfx->QueryT('COMMIT WORK;');
 	} catch (Exception $e) {
