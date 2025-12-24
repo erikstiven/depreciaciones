@@ -1,4 +1,4 @@
-/------------tabla de activos
+/------------tabla de activosd
 TABLA:saeact
 act_cod_act	integer	NO	
 tact_cod_tact	integer	YES	
