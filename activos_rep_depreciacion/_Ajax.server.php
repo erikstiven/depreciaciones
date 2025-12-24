@@ -117,7 +117,12 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 						<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
 					</td>
 					<td>
-						<label for="foto_mes_contable">Foto del mes contable (sin prorrateos)</label>
+						<label for="foto_mes_contable">Foto del mes contable</label>
+						<span class="glyphicon glyphicon-question-sign"
+							title="Muestra una foto contable del activo al mes seleccionado.
+El cálculo se realiza sin prorrateos, usando meses completos,
+redondeo contable y sin considerar el histórico de depreciaciones.
+Este modo coincide con Excel y es el utilizado para auditoría y contabilidad."></span>
 					</td>
 					<td>
 						<input type="checkbox" name="foto_mes_contable" id="foto_mes_contable" value="S">
@@ -840,57 +845,30 @@ function generar($aForm = '')
 		}
 
 		if ($foto_mes_contable == 'S') {
-			$fecha_corte = $anio_fin . '-' . str_pad($mes_fin, 2, '0', STR_PAD_LEFT) . '-01';
-			$fecha_corte_dt = DateTime::createFromFormat('Y-m-d', $fecha_corte);
+			$fecha_corte_dt = DateTime::createFromFormat('Y-n-j', $anio_fin . '-' . intval($mes_fin) . '-1');
 			if (!$fecha_corte_dt) {
 				$oReturn->alert('Rango de fechas inválido. Verifique Año/Mes Hasta.');
 				return $oReturn;
 			}
+			$fecha_corte_dt->modify('last day of this month');
+			$fecha_corte = $fecha_corte_dt->format('Y-m-d');
 
 			$sql = " WITH params AS (
 						SELECT DATE '$fecha_corte' AS fecha_corte
 					),
-					calculo AS (
+					base AS (
 						SELECT
 							saeact.act_cod_act,
 							saeact.act_clave_act,
 							saeact.act_nom_act,
 							saeact.act_fdep_act,
 							saeact.act_vutil_act,
-							saeact.act_val_comp AS valor_compra,
-							saeact.act_vres_act AS valor_residual,
-							(saeact.act_val_comp - saeact.act_vres_act) AS valor_neto,
-							(saeact.act_vutil_act * 12) AS vida_util_meses,
-							(saeact.act_val_comp - saeact.act_vres_act) / (saeact.act_vutil_act * 12) AS gasto_depreciacion,
-							(
-								(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
-								+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
-							) AS meses_depreciados,
-							(
-								(
-									(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
-									+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
-								)
-								* (
-									(saeact.act_val_comp - saeact.act_vres_act)
-									/ (saeact.act_vutil_act * 12)
-								)
-							) AS dep_acumulada,
-							saeact.act_val_comp
-							- (
-								(
-									(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
-									+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
-								)
-								* (
-									(saeact.act_val_comp - saeact.act_vres_act)
-									/ (saeact.act_vutil_act * 12)
-								)
-							) AS valor_por_depreciar,
+							saeact.act_val_comp,
+							saeact.act_vres_act,
+							date_trunc('month', saeact.act_fdep_act) AS inicio_mes,
 							saegact.gact_des_gact,
 							saesgac.sgac_des_sgac
 						FROM saeact
-						CROSS JOIN params p
 						JOIN saesgac
 						  ON saesgac.sgac_cod_sgac = saeact.sgac_cod_sgac
 						 AND saesgac.sgac_cod_empr = saeact.act_cod_empr
@@ -901,18 +879,30 @@ function generar($aForm = '')
 						  AND ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_fin)  )
 						  AND ( DATE_PART('year', act_fcmp_act) < $anio_fin OR ( DATE_PART('year', act_fcmp_act) = $anio_fin AND DATE_PART('month',act_fcmp_act) <= $mes_fin))
 						  $filtro
+					),
+					calculo AS (
+						SELECT
+							base.*,
+							ROUND((base.act_val_comp - base.act_vres_act) / (base.act_vutil_act * 12), 2) AS gasto_depreciacion,
+							(
+								(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM base.inicio_mes)) * 12
+								+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM base.inicio_mes))
+								+ 1
+							) AS meses_depreciados
+						FROM base
+						CROSS JOIN params p
 					)
 					SELECT
 						act_clave_act,
 						act_nom_act,
 						act_fdep_act,
 						act_vutil_act,
-						valor_compra,
-						valor_residual,
-						valor_neto,
+						act_val_comp AS valor_compra,
+						act_vres_act AS valor_residual,
+						(act_val_comp - act_vres_act) AS valor_neto,
 						gasto_depreciacion,
-						dep_acumulada,
-						valor_por_depreciar,
+						(meses_depreciados * gasto_depreciacion) AS dep_acumulada,
+						(act_val_comp - (meses_depreciados * gasto_depreciacion)) AS valor_por_depreciar,
 						gact_des_gact,
 						sgac_des_sgac
 					FROM calculo
