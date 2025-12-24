@@ -165,8 +165,11 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 							</label>
 							<span class="glyphicon glyphicon-question-sign"
 								title="Foto del mes contable
-Calcula la depreciación usando fórmulas contables puras, sin prorrateos ni redondeos mensuales.
-Los valores pueden diferir del reporte histórico por criterios de redondeo."></span>
+Muestra el valor contable del activo al cierre del mes seleccionado.
+El cálculo:
+• no depende del historial de depreciaciones
+• no usa prorrateos
+• incluye el mes inicial"></span>
 						</div>
 					</div>
 				</div>
@@ -893,6 +896,7 @@ $mes_header = $foto_mes_contable == 'S'
 							(
 								(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
 								+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
+								+ 1
 							) AS meses_depreciados,
 							saegact.gact_des_gact,
 							saesgac.sgac_des_sgac
