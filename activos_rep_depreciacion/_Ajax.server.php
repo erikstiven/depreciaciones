@@ -116,6 +116,12 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 					<td>
 						<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
 					</td>						
+					<td>
+						<label for="foto_mes">Foto del mes contable</label>
+					</td>
+					<td>
+						<input type="checkbox" name="foto_mes" id="foto_mes" value="S">
+					</td>
 				</tr>
 				<tr>
                     <td>' . $ifu->ObjetoHtmlLBL('anio') . '</td>
@@ -626,9 +632,26 @@ function generar($aForm = '')
 
 	$detallado	  = $aForm['detallado'];
 	$control_depreciacion = $aForm['control_depreciacion'];
+	$foto_mes = $aForm['foto_mes'];
 	// $fecha_corte  = $aForm['fecha_corte'];
 	// $fecha_corte  = fecha_informix_func($fecha_corte);
 	// $fechaServer  = date("Y-m-d");
+
+	if ($foto_mes == 'S') {
+		$anio = $anio_fin;
+		$mes = $mes_fin;
+	}
+
+	$periodo_inicio_usuario = ($anio * 100) + $mes;
+	$periodo_fin_usuario = ($anio_fin * 100) + $mes_fin;
+
+	$periodo_minimo_sql = "(select MIN((cmin.cdep_ani_depr * 100) + cmin.cdep_mes_depr)
+		from saecdep cmin
+		where cmin.cdep_cod_acti = saecdep.cdep_cod_acti
+		and cmin.act_cod_empr = saecdep.act_cod_empr
+		and cmin.act_cod_sucu = saecdep.act_cod_sucu)";
+	$periodo_inicio_real_sql = "(case when $periodo_inicio_usuario > $periodo_minimo_sql
+		then $periodo_inicio_usuario else $periodo_minimo_sql end)";
 
 	// ARMAR FILTROS
 	$filtro = '';
@@ -890,6 +913,8 @@ function generar($aForm = '')
 					 ( ( saecdep.act_cod_empr = $empresa ) and
 					 ( saecdep.cdep_ani_depr = $anio_iter ) and  
 					 ( saecdep.cdep_mes_depr = $mes_iter  ) ) and
+					 ( ((saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr) >= $periodo_inicio_real_sql ) and
+					 ( ((saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr) <= $periodo_fin_usuario ) and
 					 ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_iter)  )  and
 					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $mes_iter))
 						$filtro
@@ -1130,7 +1155,7 @@ function generar($aForm = '')
 					  	where c2.cdep_cod_acti = saecdep.cdep_cod_acti
 					  	and c2.act_cod_empr = saecdep.act_cod_empr
 					  	and c2.act_cod_sucu = saecdep.act_cod_sucu
-					  	and ((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr) between ($anio * 100 + $mes) and ($anio_fin * 100 + $mes_fin)
+					  	and ((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr) between $periodo_inicio_real_sql and $periodo_fin_usuario
 					  )) as cdep_gas_depn,
 					 DATE_PART('year', act_fiman_act ) anio,
 					 DATE_PART('month',act_fiman_act) mes,
@@ -1148,12 +1173,12 @@ function generar($aForm = '')
 					 ( saeact.act_cod_act = saecdep.cdep_cod_acti ) and  
 					 ( saeact.act_cod_empr = saecdep.act_cod_empr ) and  
 					 ( ( saecdep.act_cod_empr = $empresa ) and
-					 ( (saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr between ($anio * 100 + $mes) and ($anio_fin * 100 + $mes_fin) ) ) and
+					 ( (saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr between $periodo_inicio_real_sql and $periodo_fin_usuario ) ) and
 					 ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_fin)  )  and
 					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $mes_fin))
 						$filtro
 						GROUP BY 1,2,3,4,5,6,7,8,10,11,12,13,14,17,18,19
-						ORDER BY saegact.gact_des_gact, saesgac.sgac_des_sgac, saeact.act_nom_act, cdep_ani_depr, cdep_mes_depr ";
+						ORDER BY saegact.gact_des_gact, saesgac.sgac_des_sgac, saeact.act_nom_act, periodo_ultimo ";
 			//echo $sql; exit;
 			//$oReturn->alert($sql);
 			if ($oIfx->Query($sql)) {
@@ -1169,10 +1194,13 @@ function generar($aForm = '')
 						$periodo_ultimo = intval($oIfx->f('periodo_ultimo'));
 						$anio = $periodo_ultimo > 0 ? intdiv($periodo_ultimo, 100) : 0;
 						$mes = $periodo_ultimo > 0 ? ($periodo_ultimo % 100) : 0;
+						$anio_mostrar = $foto_mes == 'S' ? intval($anio_fin) : $anio;
 						if ((($anio_fin * 100) + $mes_fin) > $periodo_ultimo) {
 							$mostrar_aviso_mes = true;
 						}
-						$periodo_formateado = $periodo_ultimo > 0 ? sprintf('%04d-%02d', $anio, $mes) : '';
+						$periodo_formateado = $foto_mes == 'S'
+							? sprintf('%04d-%02d', $anio_fin, $mes_fin)
+							: ($periodo_ultimo > 0 ? sprintf('%04d-%02d', $anio, $mes) : '');
 						$valorCompra   = $oIfx->f('act_val_comp');
 						$valorResidu   = $oIfx->f('act_vres_act');
 						$serie         = $oIfx->f('act_seri_act');
@@ -1199,7 +1227,7 @@ function generar($aForm = '')
 										<td>' . $nombre . ' </td> 
 										<td>' . $fechaDepre . ' </td>
 										<td align = right>' . $vidaUtil . ' </td>
-										<td align = right>' . $anio . ' </td>
+										<td align = right>' . $anio_mostrar . ' </td>
 										<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 										<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 										<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
@@ -1231,7 +1259,7 @@ function generar($aForm = '')
 												<td>' . $nombre . ' </td> 
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
-												<td align = right>' . $anio . ' </td>
+												<td align = right>' . $anio_mostrar . ' </td>
 												<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
@@ -1250,7 +1278,7 @@ function generar($aForm = '')
 												<td>' . $nombre . ' </td> 
 												<td>' . $fechaDepre . ' </td>
 												<td align = right>' . $vidaUtil . ' </td>
-												<td align = right>' . $anio . ' </td>
+												<td align = right>' . $anio_mostrar . ' </td>
 												<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
@@ -1282,7 +1310,7 @@ function generar($aForm = '')
 											<td>' . $nombre . ' </td> 
 											<td>' . $fechaDepre . ' </td>
 											<td align = right>' . $vidaUtil . ' </td>
-											<td align = right>' . $anio . ' </td>
+											<td align = right>' . $anio_mostrar . ' </td>
 											<td align = right>' . $periodo_formateado . ' <span class="badge badge-info">Mes real depreciado</span></td>
 											<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
 											<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
