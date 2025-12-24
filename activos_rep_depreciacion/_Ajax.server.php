@@ -115,7 +115,13 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 					</td>
 					<td>
 						<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
-					</td>						
+					</td>
+					<td>
+						<label for="foto_mes_contable">Foto del mes contable (sin prorrateos)</label>
+					</td>
+					<td>
+						<input type="checkbox" name="foto_mes_contable" id="foto_mes_contable" value="S">
+					</td>
 				</tr>
 				<tr>
                     <td>' . $ifu->ObjetoHtmlLBL('anio') . '</td>
@@ -626,6 +632,7 @@ function generar($aForm = '')
 
 	$detallado	  = $aForm['detallado'];
 	$control_depreciacion = $aForm['control_depreciacion'];
+	$foto_mes_contable = $aForm['foto_mes_contable'];
 	// $fecha_corte  = $aForm['fecha_corte'];
 	// $fecha_corte  = fecha_informix_func($fecha_corte);
 	// $fechaServer  = date("Y-m-d");
@@ -662,6 +669,12 @@ function generar($aForm = '')
 	unset($_SESSION['ACT_REP_DEPR']);
 	$mostrar_aviso_mes = false;
 	$aviso_mes_html = '';
+	$mes_header = $foto_mes_contable == 'S'
+		? '<span>Mes corte</span>'
+		: '<span title="Este valor corresponde al último mes con depreciación registrada, no al filtro Mes Hasta.">Último mes depreciado</span>';
+	$mes_badge = $foto_mes_contable == 'S'
+		? '<span class="badge badge-info">Mes contable</span>'
+		: '<span class="badge badge-info">Mes real depreciado</span>';
 	$html = '';
 	$html .= '<table class="table table-striped table-hover " style="width: 100%; margin-bottom: 0px;">
 							<tr class="msgFrm">
@@ -670,7 +683,7 @@ function generar($aForm = '')
 								<td class="bg-primary text-center"><h5> F. Calculo </h5></td>
 								<td class="bg-primary text-center"><h5> Vida Util </h5></td>
 								<td class="bg-primary text-center"><h5> Anio </h5></td>
-								<td class="bg-primary text-center"><h5><span title="Este valor corresponde al último mes con depreciación registrada, no al filtro Mes Hasta.">Último mes depreciado</span></h5></td>
+								<td class="bg-primary text-center"><h5>' . $mes_header . '</h5></td>
 								<td class="bg-primary text-center"><h5> Valor Compra </h5> </td>
 								<td class="bg-primary text-center"><h5> Valor Residual </h5></td>
 								<td class="bg-primary text-center"><h5> Valor Neto </h5></td>
@@ -826,7 +839,266 @@ function generar($aForm = '')
 			return $oReturn;
 		}
 
-		if ($detallado == 'S') {
+		if ($foto_mes_contable == 'S') {
+			$fecha_corte = $anio_fin . '-' . str_pad($mes_fin, 2, '0', STR_PAD_LEFT) . '-01';
+			$fecha_corte_dt = DateTime::createFromFormat('Y-m-d', $fecha_corte);
+			if (!$fecha_corte_dt) {
+				$oReturn->alert('Rango de fechas inválido. Verifique Año/Mes Hasta.');
+				return $oReturn;
+			}
+
+			$sql = " WITH params AS (
+						SELECT DATE '$fecha_corte' AS fecha_corte
+					),
+					calculo AS (
+						SELECT
+							saeact.act_cod_act,
+							saeact.act_clave_act,
+							saeact.act_nom_act,
+							saeact.act_fdep_act,
+							saeact.act_vutil_act,
+							saeact.act_val_comp AS valor_compra,
+							saeact.act_vres_act AS valor_residual,
+							(saeact.act_val_comp - saeact.act_vres_act) AS valor_neto,
+							(saeact.act_vutil_act * 12) AS vida_util_meses,
+							(saeact.act_val_comp - saeact.act_vres_act) / (saeact.act_vutil_act * 12) AS gasto_depreciacion,
+							(
+								(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
+								+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
+							) AS meses_depreciados,
+							(
+								(
+									(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
+									+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
+								)
+								* (
+									(saeact.act_val_comp - saeact.act_vres_act)
+									/ (saeact.act_vutil_act * 12)
+								)
+							) AS dep_acumulada,
+							saeact.act_val_comp
+							- (
+								(
+									(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
+									+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
+								)
+								* (
+									(saeact.act_val_comp - saeact.act_vres_act)
+									/ (saeact.act_vutil_act * 12)
+								)
+							) AS valor_por_depreciar,
+							saegact.gact_des_gact,
+							saesgac.sgac_des_sgac
+						FROM saeact
+						CROSS JOIN params p
+						JOIN saesgac
+						  ON saesgac.sgac_cod_sgac = saeact.sgac_cod_sgac
+						 AND saesgac.sgac_cod_empr = saeact.act_cod_empr
+						JOIN saegact
+						  ON saegact.gact_cod_gact = saesgac.gact_cod_gact
+						 AND saegact.gact_cod_empr = saesgac.sgac_cod_empr
+						WHERE saeact.act_cod_empr = $empresa
+						  AND ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_fin)  )
+						  AND ( DATE_PART('year', act_fcmp_act) < $anio_fin OR ( DATE_PART('year', act_fcmp_act) = $anio_fin AND DATE_PART('month',act_fcmp_act) <= $mes_fin))
+						  $filtro
+					)
+					SELECT
+						act_clave_act,
+						act_nom_act,
+						act_fdep_act,
+						act_vutil_act,
+						valor_compra,
+						valor_residual,
+						valor_neto,
+						gasto_depreciacion,
+						dep_acumulada,
+						valor_por_depreciar,
+						gact_des_gact,
+						sgac_des_sgac
+					FROM calculo
+					ORDER BY gact_des_gact, sgac_des_sgac, act_nom_act ";
+
+			if ($oIfx->Query($sql)) {
+				if ($oIfx->NumFilas() > 0) {
+					$i = 1;
+					$ctrl_reg++;
+
+					do {
+						$clave  	   = $oIfx->f('act_clave_act');
+						$nombre 	   = $oIfx->f('act_nom_act');
+						$fechaDepre    = $oIfx->f('act_fdep_act');
+						$vidaUtil      = $oIfx->f('act_vutil_act');
+						$anio 		   = $anio_fin;
+						$mes 		   = $mes_fin;
+						$valorCompra   = $oIfx->f('valor_compra');
+						$valorResidu   = $oIfx->f('valor_residual');
+						$grupo  	   = $oIfx->f('gact_des_gact');
+						$subgrupo 	   = $oIfx->f('sgac_des_sgac');
+						$gastoDepr     = $oIfx->f('gasto_depreciacion');
+						$deprAcumulada = $oIfx->f('dep_acumulada');
+						$deprAnterior  = max($deprAcumulada - $gastoDepr, 0);
+
+						$valorNeto     = $oIfx->f('valor_neto');
+						$valorPorDepr  = $oIfx->f('valor_por_depreciar');
+
+						if ($i < 2) {
+							$html .= '<tr>
+										<td class="bg-info" colspan="13" style = "color:blue">' . $grupo . ' </td> 										
+									</tr>
+									<tr>										
+										<td class="bg-info" colspan="13">&nbsp;&nbsp;&nbsp;&nbsp;' . $subgrupo . ' </td> 
+									</tr>';
+							$html .= '<tr>
+										<td>' . $clave . ' </td> 
+										<td>' . $nombre . ' </td> 
+										<td>' . $fechaDepre . ' </td>
+										<td align = right>' . $vidaUtil . ' </td>
+										<td align = right>' . $anio . ' </td>
+										<td align = right>' . $mes . ' ' . $mes_badge . '</td>
+										<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
+										<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
+										<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
+										<td align = right>' . number_format($deprAnterior, 2, '.', ',') . ' </td>
+										<td align = right>' . number_format($gastoDepr, 2, '.', ',') . ' </td>
+										<td align = right>' . number_format($deprAcumulada, 2, '.', ',') . ' </td>
+										<td align = right>' . number_format($valorPorDepr, 2, '.', ',') . ' </td>
+									</tr>';
+							$totalValorCompra     =  $valorCompra;
+							$totalValorResidu     =  $valorResidu;
+							$totalValorNeto       =  $valorNeto;
+							$totalDeprAnterior    =  $deprAnterior;
+							$totalGastoDepr       =  $gastoDepr;
+							$totalDeprAcumulada   =  $deprAcumulada;
+							$totalValorPorDepr    =  $valorPorDepr;
+						} else {
+							if ($grupo == $grupoAnt) {
+								$totalValorCompra   = $totalValorCompra   + $valorCompra;
+								$totalValorResidu   = $totalValorResidu   + $valorResidu;
+								$totalValorNeto     = $totalValorNeto     + $valorNeto;
+								$totalDeprAnterior  = $totalDeprAnterior  + $deprAnterior;
+								$totalGastoDepr     = $totalGastoDepr     + $gastoDepr;
+								$totalDeprAcumulada = $totalDeprAcumulada + $deprAcumulada;
+								$totalValorPorDepr  = $totalValorPorDepr  + $valorPorDepr;
+								if ($subgrupo == $subgrupoAnt) {
+									$html .= '<tr>
+												<td>' . $clave . ' </td> 
+												<td>' . $nombre . ' </td> 
+												<td>' . $fechaDepre . ' </td>
+												<td align = right>' . $vidaUtil . ' </td>
+												<td align = right>' . $anio . ' </td>
+												<td align = right>' . $mes . ' ' . $mes_badge . '</td>
+												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($deprAnterior, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($gastoDepr, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($deprAcumulada, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($valorPorDepr, 2, '.', ',') . ' </td>
+											</tr>';
+								} else {
+									$html .= '<tr>																						
+												<td class="bg-info" colspan="13">&nbsp;&nbsp;&nbsp;&nbsp;' . $subgrupo . ' </td>
+											</tr>
+											<tr>
+												<td>' . $clave . ' </td> 
+												<td>' . $nombre . ' </td> 
+												<td>' . $fechaDepre . ' </td>
+												<td align = right>' . $vidaUtil . ' </td>
+												<td align = right>' . $anio . ' </td>
+												<td align = right>' . $mes . ' ' . $mes_badge . '</td>
+												<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($deprAnterior, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($gastoDepr, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($deprAcumulada, 2, '.', ',') . ' </td>
+												<td align = right>' . number_format($valorPorDepr, 2, '.', ',') . ' </td>
+											</tr>';
+								}
+							} else {
+								$html .= '<tr> <td colspan="6" style = "color:red">' . "TOTAL GRUPO" . '</td>   									
+											<td align = right style = "color:red">' . number_format($totalValorCompra, 2, '.', ',') . ' </td> 
+											<td align = right style = "color:red">' . number_format($totalValorResidu, 2, '.', ',') . ' </td> 
+											<td align = right style = "color:red">' . number_format($totalValorNeto, 2, '.', ',') . ' </td> 
+											<td align = right style = "color:red">' . number_format($totalDeprAnterior, 2, '.', ',') . ' </td> 
+											<td align = right style = "color:red">' . number_format($totalGastoDepr, 2, '.', ',') . ' </td> 
+											<td align = right style = "color:red">' . number_format($totalDeprAcumulada, 2, '.', ',') . ' </td> 
+											<td align = right style = "color:red">' . number_format($totalValorPorDepr, 2, '.', ',') . ' </td> 
+										</tr>
+										<tr>										
+											<td class="bg-info" colspan="13" style = "color:blue">' . $grupo . ' </td>
+										</tr>
+										<tr>										
+											<td class="bg-info" colspan="13">&nbsp;&nbsp;&nbsp;&nbsp;' . $subgrupo . ' </td>
+										</tr>
+										<tr>
+											<td>' . $clave . ' </td> 
+											<td>' . $nombre . ' </td> 
+											<td>' . $fechaDepre . ' </td>
+											<td align = right>' . $vidaUtil . ' </td>
+											<td align = right>' . $anio . ' </td>
+											<td align = right>' . $mes . ' ' . $mes_badge . '</td>
+											<td align = right>' . number_format($valorCompra, 2, '.', ',') . ' </td>
+											<td align = right>' . number_format($valorResidu, 2, '.', ',') . ' </td>
+											<td align = right>' . number_format($valorNeto, 2, '.', ',') . ' </td>
+											<td align = right>' . number_format($deprAnterior, 2, '.', ',') . ' </td>
+											<td align = right>' . number_format($gastoDepr, 2, '.', ',') . ' </td>
+											<td align = right>' . number_format($deprAcumulada, 2, '.', ',') . ' </td>
+											<td align = right>' . number_format($valorPorDepr, 2, '.', ',') . ' </td>
+										</tr>';
+								// GUARDAR TOTALES GENERALES
+								$sumaValorCompra	  = $sumaValorCompra   + $totalValorCompra;
+								$sumaValorResidu	  = $sumaValorResidu   + $totalValorResidu;
+								$sumaValorNeto  	  = $sumaValorNeto     + $totalValorNeto;
+								$sumaDeprAnterior	  = $sumaDeprAnterior  + $totalDeprAnterior;
+								$sumaGastoDepr	      = $sumaGastoDepr     + $totalGastoDepr;
+								$sumaDeprAcumulada	  = $sumaDeprAcumulada + $totalDeprAcumulada;
+								$sumaValorPorDepr	  = $sumaValorPorDepr  + $totalValorPorDepr;
+								// INICIAR TOTALES POR GRUPO
+								$totalValorCompra     =  $valorCompra;
+								$totalValorResidu     =  $valorResidu;
+								$totalValorNeto       =  $valorNeto;
+								$totalDeprAnterior    =  $deprAnterior;
+								$totalGastoDepr       =  $gastoDepr;
+								$totalDeprAcumulada   =  $deprAcumulada;
+								$totalValorPorDepr    =  $valorPorDepr;
+							}
+						}
+						$grupoAnt	 = $grupo;
+						$subgrupoAnt = $subgrupo;
+						$i++;
+					} while ($oIfx->SiguienteRegistro());
+					// ULTIMA FILA POR GRUPOS
+					$html .= '<tr> <td colspan="6" style = "color:red">' . "TOTAL GRUPO" . '</td>   									
+								<td align = right style = "color:red">' . number_format($totalValorCompra, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($totalValorResidu, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($totalValorNeto, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($totalDeprAnterior, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($totalGastoDepr, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($totalDeprAcumulada, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($totalValorPorDepr, 2, '.', ',') . ' </td> 
+							</tr>';
+					// ULTIMA FILA TOTALES	
+					$sumaValorCompra	  = $sumaValorCompra   + $totalValorCompra;
+					$sumaValorResidu	  = $sumaValorResidu   + $totalValorResidu;
+					$sumaValorNeto  	  = $sumaValorNeto     + $totalValorNeto;
+					$sumaDeprAnterior	  = $sumaDeprAnterior  + $totalDeprAnterior;
+					$sumaGastoDepr	      = $sumaGastoDepr     + $totalGastoDepr;
+					$sumaDeprAcumulada	  = $sumaDeprAcumulada + $totalDeprAcumulada;
+					$sumaValorPorDepr	  = $sumaValorPorDepr  + $totalValorPorDepr;
+					$html .= '<tr> <td colspan="6" style = "color:red">' . "TOTALES" . '</td>   									
+								<td align = right style = "color:red">' . number_format($sumaValorCompra, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($sumaValorResidu, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($sumaValorNeto, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($sumaDeprAnterior, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($sumaGastoDepr, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($sumaDeprAcumulada, 2, '.', ',') . ' </td> 
+								<td align = right style = "color:red">' . number_format($sumaValorPorDepr, 2, '.', ',') . ' </td> 
+							</tr>';
+				}
+			}
+			$oIfx->Free();
+		} elseif ($detallado == 'S') {
 			$max_mes_encontrado = 0;
 			$periodo_filtro = ($anio_fin * 100) + $mes_fin;
 			$periodo_inicio = DateTime::createFromFormat('Y-n-j', $anio . '-' . intval($mes) . '-1');
