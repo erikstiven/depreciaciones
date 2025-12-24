@@ -164,10 +164,9 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 								Foto del mes contable
 							</label>
 							<span class="glyphicon glyphicon-question-sign"
-								title="Muestra una foto contable del activo al mes seleccionado.
-El cálculo se realiza sin prorrateos, usando meses completos,
-redondeo contable y sin considerar el histórico de depreciaciones.
-Este modo coincide con Excel y es el utilizado para auditoría y contabilidad."></span>
+								title="Foto del mes contable
+Calcula la depreciación usando fórmulas contables puras, sin prorrateos ni redondeos mensuales.
+Los valores pueden diferir del reporte histórico por criterios de redondeo."></span>
 						</div>
 					</div>
 				</div>
@@ -696,8 +695,8 @@ function generar($aForm = '')
 	unset($_SESSION['ACT_REP_DEPR']);
 	$mostrar_aviso_mes = false;
 	$aviso_mes_html = '';
-	$mes_header = $foto_mes_contable == 'S'
-		? '<span>Mes corte</span>'
+$mes_header = $foto_mes_contable == 'S'
+		? '<span>Mes contable</span>'
 		: '<span title="Este valor corresponde al último mes con depreciación registrada, no al filtro Mes Hasta.">Último mes depreciado</span>';
 	$mes_badge = $foto_mes_contable == 'S'
 		? '<span class="badge badge-info">Mes contable</span>'
@@ -878,7 +877,7 @@ function generar($aForm = '')
 			$sql = " WITH params AS (
 						SELECT DATE '$fecha_corte' AS fecha_corte
 					),
-					base AS (
+					calculo AS (
 						SELECT
 							saeact.act_cod_act,
 							saeact.act_clave_act,
@@ -887,10 +886,18 @@ function generar($aForm = '')
 							saeact.act_vutil_act,
 							saeact.act_val_comp,
 							saeact.act_vres_act,
-							date_trunc('month', saeact.act_fdep_act) AS inicio_mes,
+							(saeact.act_val_comp - saeact.act_vres_act) AS valor_neto,
+							(saeact.act_vutil_act * 12) AS vida_util_meses,
+							(saeact.act_val_comp - saeact.act_vres_act)
+								/ (saeact.act_vutil_act * 12) AS depreciacion_mensual,
+							(
+								(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM saeact.act_fdep_act)) * 12
+								+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM saeact.act_fdep_act))
+							) AS meses_depreciados,
 							saegact.gact_des_gact,
 							saesgac.sgac_des_sgac
 						FROM saeact
+						CROSS JOIN params p
 						JOIN saesgac
 						  ON saesgac.sgac_cod_sgac = saeact.sgac_cod_sgac
 						 AND saesgac.sgac_cod_empr = saeact.act_cod_empr
@@ -901,18 +908,6 @@ function generar($aForm = '')
 						  AND ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_fin)  )
 						  AND ( DATE_PART('year', act_fcmp_act) < $anio_fin OR ( DATE_PART('year', act_fcmp_act) = $anio_fin AND DATE_PART('month',act_fcmp_act) <= $mes_fin))
 						  $filtro
-					),
-					calculo AS (
-						SELECT
-							base.*,
-							ROUND((base.act_val_comp - base.act_vres_act) / (base.act_vutil_act * 12), 2) AS gasto_depreciacion,
-							(
-								(EXTRACT(YEAR FROM p.fecha_corte) - EXTRACT(YEAR FROM base.inicio_mes)) * 12
-								+ (EXTRACT(MONTH FROM p.fecha_corte) - EXTRACT(MONTH FROM base.inicio_mes))
-								+ 1
-							) AS meses_depreciados
-						FROM base
-						CROSS JOIN params p
 					)
 					SELECT
 						act_clave_act,
@@ -921,10 +916,11 @@ function generar($aForm = '')
 						act_vutil_act,
 						act_val_comp AS valor_compra,
 						act_vres_act AS valor_residual,
-						(act_val_comp - act_vres_act) AS valor_neto,
-						gasto_depreciacion,
-						(meses_depreciados * gasto_depreciacion) AS dep_acumulada,
-						(act_val_comp - (meses_depreciados * gasto_depreciacion)) AS valor_por_depreciar,
+						valor_neto,
+						ROUND(depreciacion_mensual, 2) AS gasto_depreciacion,
+						ROUND(meses_depreciados * depreciacion_mensual, 2) AS dep_acumulada,
+						ROUND((meses_depreciados * depreciacion_mensual) - depreciacion_mensual, 2) AS dep_anterior,
+						ROUND(act_val_comp - (meses_depreciados * depreciacion_mensual), 2) AS valor_por_depreciar,
 						gact_des_gact,
 						sgac_des_sgac
 					FROM calculo
@@ -948,7 +944,7 @@ function generar($aForm = '')
 						$subgrupo 	   = $oIfx->f('sgac_des_sgac');
 						$gastoDepr     = $oIfx->f('gasto_depreciacion');
 						$deprAcumulada = $oIfx->f('dep_acumulada');
-						$deprAnterior  = max($deprAcumulada - $gastoDepr, 0);
+						$deprAnterior  = $oIfx->f('dep_anterior');
 
 						$valorNeto     = $oIfx->f('valor_neto');
 						$valorPorDepr  = $oIfx->f('valor_por_depreciar');
