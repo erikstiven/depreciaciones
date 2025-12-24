@@ -5,6 +5,15 @@ require("_Ajax.comun.php"); // No modificar esta linea
   // S E R V I D O R   A J A X //
   :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
 
+function obtener_inicio_mes_depreciacion(DateTime $fecha)
+{
+	$inicio = new DateTime($fecha->format('Y-m-01'));
+	if (intval($fecha->format('d')) !== 1) {
+		$inicio->modify('+1 month');
+	}
+	return $inicio;
+}
+
 
 function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 {
@@ -157,6 +166,10 @@ function genera_cabecera_formulario($sAccion = 'nuevo', $aForm = '')
 								<input type="checkbox" name="control_depreciacion" id="control_depreciacion" value="S">
 								Control de Depreciaci&oacute;n
 							</label>
+							<span class="glyphicon glyphicon-question-sign"
+								title="Control de depreciación
+Compara meses esperados vs histórico (saecdep).
+No recalcula valores contables."></span>
 						</div>
 						<div class="checkbox" style="display: inline-block;">
 							<label for="foto_mes_contable">
@@ -169,7 +182,7 @@ Muestra el valor contable del activo al cierre del mes seleccionado.
 El cálculo:
 • no depende del historial de depreciaciones
 • no usa prorrateos
-• incluye el mes inicial"></span>
+• incluye el mes inicial solo si la fecha de inicio es día 1"></span>
 						</div>
 					</div>
 				</div>
@@ -698,13 +711,17 @@ function generar($aForm = '')
 	unset($_SESSION['ACT_REP_DEPR']);
 	$mostrar_aviso_mes = false;
 	$aviso_mes_html = '';
-$mes_header = $foto_mes_contable == 'S'
+	$mes_header = $foto_mes_contable == 'S'
 		? '<span>Mes contable</span>'
 		: '<span title="Este valor corresponde al último mes con depreciación registrada, no al filtro Mes Hasta.">Último mes depreciado</span>';
 	$mes_badge = $foto_mes_contable == 'S'
 		? '<span class="badge badge-info">Mes contable</span>'
 		: '<span class="badge badge-info">Mes real depreciado</span>';
+	$fuente_html = $foto_mes_contable == 'S'
+		? '<div class="alert alert-info"><strong>Fuente:</strong> cálculo contable desde <em>saeact</em> a la fecha de corte seleccionada (no usa histórico).</div>'
+		: '<div class="alert alert-warning"><strong>Fuente:</strong> histórico mensual registrado en <em>saecdep</em>.</div>';
 	$html = '';
+	$html .= $fuente_html;
 	$html .= '<table class="table table-striped table-hover " id="tablaReporteDepreciacion" style="width: 100%; margin-bottom: 0px;">
 							<tr class="msgFrm">
 								<td class="bg-primary text-center"><h5> Clave </h5></td>
@@ -786,6 +803,8 @@ $mes_header = $foto_mes_contable == 'S'
 					$inicio_activo_dt = DateTime::createFromFormat('Y-m-d', $fecha_inicio_activo);
 					if (!$inicio_activo_dt) {
 						$inicio_activo_dt = clone $periodo_fin_dt;
+					} else {
+						$inicio_activo_dt = obtener_inicio_mes_depreciacion($inicio_activo_dt);
 					}
 
 					$vida_util_meses = $vida_util * 12;
