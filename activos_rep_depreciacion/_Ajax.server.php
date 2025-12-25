@@ -645,7 +645,7 @@ function generar($aForm = '')
 	$periodo_inicio_usuario = ($anio * 100) + $mes;
 	$periodo_fin_usuario = ($anio_fin * 100) + $mes_fin;
 
-	$periodo_minimo_sql = "(select MIN((cmin.cdep_ani_depr * 100) + cmin.cdep_mes_depr)
+	$periodo_minimo_sql = "(select COALESCE(MIN((cmin.cdep_ani_depr * 100) + cmin.cdep_mes_depr), 0)
 		from saecdep cmin
 		where cmin.cdep_cod_acti = saecdep.cdep_cod_acti
 		and cmin.act_cod_empr = saecdep.act_cod_empr
@@ -848,6 +848,30 @@ function generar($aForm = '')
 			$oIfx->QueryT('COMMIT WORK;');
 			return $oReturn;
 		}
+
+		$condicion_periodo_sql = $foto_mes == 'S'
+			? "(saecdep.cdep_ani_depr = $anio_fin and saecdep.cdep_mes_depr = $mes_fin)"
+			: "((saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr between $periodo_inicio_real_sql and $periodo_fin_usuario)";
+		$subquery_gasto_depr = $foto_mes == 'S'
+			? "(select COALESCE(MAX(c.cdep_val_repr), 0)
+				  from saecdep c
+				  where c.cdep_cod_acti = saecdep.cdep_cod_acti
+				  and c.act_cod_empr = saecdep.act_cod_empr
+				  and c.act_cod_sucu = saecdep.act_cod_sucu
+				  and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) = $periodo_fin_usuario) as cdep_gas_depn"
+			: "(select COALESCE(MAX(c.cdep_val_repr), 0)
+				  from saecdep c
+				  where c.cdep_cod_acti = saecdep.cdep_cod_acti
+				  and c.act_cod_empr = saecdep.act_cod_empr
+				  and c.act_cod_sucu = saecdep.act_cod_sucu
+				  and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) = (
+				  	select MAX((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr)
+				  	from saecdep c2
+				  	where c2.cdep_cod_acti = saecdep.cdep_cod_acti
+				  	and c2.act_cod_empr = saecdep.act_cod_empr
+				  	and c2.act_cod_sucu = saecdep.act_cod_sucu
+				  	and ((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr) between $periodo_inicio_real_sql and $periodo_fin_usuario
+				  )) as cdep_gas_depn";
 
 		if ($detallado == 'S') {
 			$max_mes_encontrado = 0;
@@ -1144,19 +1168,7 @@ function generar($aForm = '')
 					 and c.act_cod_empr = saecdep.act_cod_empr
 					 and c.act_cod_sucu = saecdep.act_cod_sucu
 					 and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) <= ($anio_fin * 100 + $mes_fin)) as cdep_dep_acum,
-					 (select COALESCE(MAX(c.cdep_val_repr), 0)
-					  from saecdep c
-					  where c.cdep_cod_acti = saecdep.cdep_cod_acti
-					  and c.act_cod_empr = saecdep.act_cod_empr
-					  and c.act_cod_sucu = saecdep.act_cod_sucu
-					  and ((c.cdep_ani_depr * 100) + c.cdep_mes_depr) = (
-					  	select MAX((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr)
-					  	from saecdep c2
-					  	where c2.cdep_cod_acti = saecdep.cdep_cod_acti
-					  	and c2.act_cod_empr = saecdep.act_cod_empr
-					  	and c2.act_cod_sucu = saecdep.act_cod_sucu
-					  	and ((c2.cdep_ani_depr * 100) + c2.cdep_mes_depr) between $periodo_inicio_real_sql and $periodo_fin_usuario
-					  )) as cdep_gas_depn,
+					 $subquery_gasto_depr,
 					 DATE_PART('year', act_fiman_act ) anio,
 					 DATE_PART('month',act_fiman_act) mes,
 					 saeact.act_vres_act,
@@ -1173,7 +1185,7 @@ function generar($aForm = '')
 					 ( saeact.act_cod_act = saecdep.cdep_cod_acti ) and  
 					 ( saeact.act_cod_empr = saecdep.act_cod_empr ) and  
 					 ( ( saecdep.act_cod_empr = $empresa ) and
-					 ( (saecdep.cdep_ani_depr * 100) + saecdep.cdep_mes_depr between $periodo_inicio_real_sql and $periodo_fin_usuario ) ) and
+					 ( $condicion_periodo_sql ) ) and
 					 ( ( (COALESCE(DATE_PART('year', act_fiman_act ),3000))*100+COALESCE(DATE_PART('month',act_fiman_act),13)   )  > ($anio_fin *100 + $mes_fin)  )  and
 					 ( DATE_PART('year', act_fcmp_act) < $anio_fin or ( DATE_PART('year', act_fcmp_act) = $anio_fin and DATE_PART('month',act_fcmp_act)<= $mes_fin))
 						$filtro
@@ -1389,7 +1401,27 @@ function generar($aForm = '')
 			}
 			$_SESSION['ACT_REP_DEPR'] = $html;
 		} else {
-			$html = '<div style="font-size:14px;" ><b>..Sin Datos..<b/></div>';
+			$sql_existe = "select first 1 1 as existe
+				from saegact,
+					 saesgac,
+					 saecdep,
+					 saeact
+				where ( saegact.gact_cod_gact = saesgac.gact_cod_gact ) and
+					  ( saegact.gact_cod_empr = saesgac.sgac_cod_empr ) and
+					  ( saesgac.sgac_cod_sgac = saeact.sgac_cod_sgac ) and
+					  ( saesgac.sgac_cod_empr = saeact.act_cod_empr ) and
+					  ( saeact.act_cod_act = saecdep.cdep_cod_acti ) and
+					  ( saeact.act_cod_empr = saecdep.act_cod_empr ) and
+					  ( saecdep.act_cod_empr = $empresa )
+					  $filtro";
+			$existe_depreciacion = false;
+			if ($oIfx->Query($sql_existe)) {
+				if ($oIfx->NumFilas() > 0) {
+					$existe_depreciacion = true;
+				}
+				$oIfx->Free();
+			}
+			$html = '<div style="font-size:14px;" ><b>El activo no posee depreciaciones en el rango seleccionado</b></div>';
 		}
 
 
@@ -1399,7 +1431,7 @@ function generar($aForm = '')
 	} catch (Exception $e) {
 		$oCon->QueryT('ROLLBACK');
 		error_log('Reporte depreciación: ' . $e->getMessage());
-		$oReturn->alert('Error al generar el reporte de depreciación. Revise la configuración del activo.');
+		$oReturn->alert('El activo no posee depreciaciones en el rango seleccionado.');
 	}
 	return $oReturn;
 }
